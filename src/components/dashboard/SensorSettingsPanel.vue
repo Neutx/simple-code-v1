@@ -235,15 +235,16 @@ export default {
 
     // Current polling rate index from Vuex
     pollingIndex() {
-      const index = this.pollingRates.indexOf(this.sensorPollingRate)
-      return index !== -1 ? index : 2
+      const index = this.dynamicPollingRates.indexOf(this.sensorPollingRate)
+      // Default to the last available option if not found
+      return index !== -1 ? index : this.dynamicPollingRates.length -1
     },
 
     dynamicPollingRates() {
-      if (this.isWiredDevice) {
-        return this.pollingRates.filter(rate => rate <= 1000);
-      }
-      return this.pollingRates;
+      // Return appropriate polling rates based on device connection type
+      // Wired: 125Hz, 500Hz, 2000Hz only (as per user requirement)
+      // Wireless: All rates available
+      return this.isWiredDevice ? [125, 500, 1000] : this.pollingRates;
     },
 
     activePollingRate() {
@@ -251,7 +252,14 @@ export default {
     },
 
     fillPercent() {
-      return (this.pollingIndex / (this.pollingRates.length - 1)) * 100
+      const index = this.dynamicPollingRates.indexOf(this.sensorPollingRate)
+      const maxIndex = this.dynamicPollingRates.length - 1
+      
+      if (index === -1 || maxIndex <= 0) {
+        return 0
+      }
+      
+      return (index / maxIndex) * 100
     },
 
     sleepTimer() {
@@ -268,18 +276,23 @@ export default {
       return this.activePollingRate >= 2000
     },
 
-    // Get available sensor modes based on polling rate
+    // Get available sensor modes based on device type and polling rate
     availableSensorModes() {
-      if (this.isHighPollingRate) {
-        // Only Corded mode available for 2000Hz and 4000Hz
+      // PRIORITY 1: If device is wired, only Corded mode is available
+      if (this.isWiredDevice) {
         return [{ id: 256, label: 'Corded' }]
-      } else {
-        // Low Power and High Power available for rates below 2000Hz
-        return [
-          { id: 0, label: 'Low Power' },
-          { id: 1, label: 'High Power' }
-        ]
       }
+      
+      // PRIORITY 2: For wireless devices with high polling rates (2000Hz+), only Corded mode
+      if (this.isHighPollingRate) {
+        return [{ id: 256, label: 'Corded' }]
+      }
+      
+      // PRIORITY 3: For wireless devices with normal polling rates, Low Power and High Power available
+      return [
+        { id: 0, label: 'Low Power' },
+        { id: 1, label: 'High Power' }
+      ]
     },
 
     // Check if a sensor mode is selectable
@@ -317,12 +330,19 @@ export default {
         setTimeout(() => this.initializeFromDevice(), 500);
       }
     });
+
+    // Listen for device info updates to sync wired status
+    this.$bus.$on("updateDeviceInfo", (info) => {
+      console.log('🔌 Device info update received:', { isWired: info.isWired })
+      this.setWiredDevice(info.isWired);
+    });
   },
   
   beforeDestroy() {
     // Clean up event listeners
     this.$bus.$off("updateMouseUI")
     this.$bus.$off("deviceConnect")
+    this.$bus.$off("updateDeviceInfo")
   },
   
   watch: {
@@ -351,13 +371,16 @@ export default {
       if (!this.isUpdatingFromVuex && this.isDeviceConnected && oldRate !== undefined) {
         this.syncPollingRateToDevice(newRate);
 
-        // Automatically update sensor mode based on polling rate
+        // Automatically update sensor mode based on polling rate and device type
         if (newRate >= 2000 && this.sensorMode !== 256) {
-          this.setSensorMode(256); // Set to Corded
+          this.setSensorMode(256); // Set to Corded for high polling rates
         } else if (newRate < 2000 && this.sensorMode === 256) {
-          // Revert to a default non-corded mode, e.g., Low Power (0) or the last known one
-          // For simplicity, we'll revert to Low Power.
-          this.setSensorMode(0);
+          // CRITICAL: For wired devices, NEVER switch away from Corded mode
+          if (!this.isWiredDevice) {
+            // Only revert to Low Power for wireless devices
+            this.setSensorMode(0);
+          }
+          // For wired devices, keep Corded mode regardless of polling rate
         }
       }
       // Auto-save to localStorage when settings change
@@ -441,6 +464,18 @@ export default {
       if (!this.isUpdatingFromDevice && this.isDeviceConnected) {
         this.setSensorPollingRate(newRate)
       }
+    },
+
+    // Monitor device wired status changes
+    'deviceInfo.isWired'(newIsWired) {
+      console.log('🔌 Device wired status changed:', newIsWired)
+      this.setWiredDevice(newIsWired)
+      
+      // Auto-switch to Corded mode when device becomes wired
+      if (newIsWired && this.sensorMode !== 256) {
+        console.log('🔌 Auto-switching to Corded mode for wired device')
+        this.setSensorMode(256)
+      }
     }
   },
   
@@ -489,6 +524,16 @@ export default {
       this.isUpdatingFromDevice = true
       
       try {
+        // Always sync the wired device status first
+        this.setWiredDevice(this.deviceInfo.isWired)
+        console.log('🔌 Synced wired device status:', this.deviceInfo.isWired)
+        
+        // Ensure wired devices are set to Corded mode
+        if (this.deviceInfo.isWired && this.sensorMode !== 256) {
+          console.log('🔌 Setting wired device to Corded mode during initialization')
+          this.setSensorMode(256)
+        }
+        
         // CRITICAL: Always check for persisted settings first
         const hasPersistedSettings = localStorage.getItem('kreo_sensor_settings')
         
@@ -735,20 +780,42 @@ export default {
       const newIndex = parseInt(event.target.value, 10);
       const newRate = this.dynamicPollingRates[newIndex];
       this.setSensorPollingRate(newRate);
+      
+      // Apply the same sensor mode logic as clicking
+      this.handlePollingRateChange(newIndex);
     },
 
     handlePollingRateChange(newIndex) {
       const newRate = this.dynamicPollingRates[newIndex]
       
+      console.log('🔧 Polling rate change:', {
+        newRate,
+        isWiredDevice: this.isWiredDevice,
+        currentSensorMode: this.sensorMode
+      })
+      
       if (newRate >= 2000) {
-        // Auto-switch to Corded mode for high polling rates
+        // Auto-switch to Corded mode for high polling rates (both wired and wireless)
         if (this.sensorMode !== 256) {
+          console.log('🔧 Switching to Corded mode for high polling rate')
           this.setSensorMode(256)
         }
       } else {
-        // Auto-switch away from Corded mode for lower polling rates
-        if (this.sensorMode === 256) {
-          this.setSensorMode(0) // Default to Low Power
+        // CRITICAL: For wired devices, NEVER switch away from Corded mode
+        if (this.isWiredDevice) {
+          // Keep Corded mode for wired devices regardless of polling rate
+          if (this.sensorMode !== 256) {
+            console.log('🔌 Ensuring Corded mode for wired device')
+            this.setSensorMode(256)
+          } else {
+            console.log('🔌 Keeping Corded mode for wired device (already set)')
+          }
+        } else {
+          // Only switch away from Corded mode for wireless devices with lower polling rates
+          if (this.sensorMode === 256) {
+            console.log('📡 Switching to Low Power for wireless device with low polling rate')
+            this.setSensorMode(0) // Default to Low Power for wireless
+          }
         }
       }
     },
@@ -757,17 +824,47 @@ export default {
       if (!this.isDeviceConnected) return
       
       try {
-        // Reset hardware to defaults
-        await HIDHandle.Set_MS_SensorMode(0)          // Low Power
-        await HIDHandle.Set_MS_LOD(1.0)               // 1mm
-        await HIDHandle.Set_MS_ReportRate(1000)       // 1000Hz
-        await HIDHandle.Set_MS_Ripple(0)              // Off
-        await HIDHandle.Set_MS_Angle(0)               // Off
-        await HIDHandle.Set_MS_MotionSync(1)          // On
-        await HIDHandle.Set_MS_LightOffTime(6)        // 1 min sleep timer
+        // Check current wired status from device before resetting
+        const currentWiredStatus = this.deviceInfo.isWired
+        console.log('🔌 Reset to default - current wired status:', currentWiredStatus)
         
-        // Reset Vuex state to defaults
+        // Determine appropriate defaults based on device type
+        const defaultPollingRate = currentWiredStatus ? 500 : 1000    // 500Hz for wired, 1000Hz for wireless
+        const defaultSensorMode = currentWiredStatus ? 256 : 0         // Corded for wired, Low Power for wireless
+        
+        // Reset hardware to defaults with device-appropriate settings
+        await HIDHandle.Set_MS_SensorMode(defaultSensorMode)    // Corded for wired, Low Power for wireless
+        await HIDHandle.Set_MS_LOD(1.0)                         // 1mm
+        await HIDHandle.Set_MS_ReportRate(defaultPollingRate)   // Device-appropriate default
+        await HIDHandle.Set_MS_Ripple(0)                        // Off
+        await HIDHandle.Set_MS_Angle(0)                         // Off
+        await HIDHandle.Set_MS_MotionSync(1)                    // On
+        await HIDHandle.Set_MS_LightOffTime(6)                  // 1 min sleep timer
+        
+        // Reset Vuex state to defaults but preserve device-specific settings
         await this.resetSensorSettings()
+        
+        // Use nextTick to ensure the reset is complete before restoring device-specific settings
+        await this.$nextTick()
+        
+        // Immediately restore the actual device wired status
+        this.setWiredDevice(currentWiredStatus)
+        
+        // Set the correct sensor mode and polling rate in Vuex based on device type
+        this.setSensorMode(defaultSensorMode)
+        this.setSensorPollingRate(defaultPollingRate)
+        
+        // Save the updated settings to localStorage to preserve the correct state
+        await this.saveSettingsToLocalStorage()
+        
+        // Log the reset operation
+        console.log('✅ Reset to default completed:', {
+          wiredDevice: currentWiredStatus,
+          defaultSensorMode: defaultSensorMode,
+          defaultPollingRate: defaultPollingRate,
+          availableRates: currentWiredStatus ? [125, 500, 1000] : [125, 500, 1000, 2000, 4000],
+          availableSensorModes: currentWiredStatus ? ['Corded'] : ['Low Power', 'High Power']
+        })
         
         this.$bus.$emit("updateMouseUI", this.deviceInfo.mouseCfg)
         

@@ -417,10 +417,25 @@ function Handle_Exit() {
   deviceInfo.deviceOpen = false;
 }
 
+//设备断开回调函数
+var onDisconnectCallback = null;
+
+//设置设备断开回调
+function Set_Disconnect_Callback(callback) {
+  onDisconnectCallback = callback;
+}
+
 //设备主动断开，例如拔出设备
 function Device_Disconnect() {
-  navigator.hid.ondisconnect = (event) => {
+  navigator.hid.ondisconnect = () => {
+    console.log("🔌 Physical device disconnect detected");
     Handle_Exit();
+    
+    // Trigger the callback to notify Vue store about disconnection
+    if (onDisconnectCallback && typeof onDisconnectCallback === 'function') {
+      console.log("📞 Calling disconnect callback to trigger Vue store update");
+      onDisconnectCallback();
+    }
   } 
 }
 
@@ -2848,6 +2863,14 @@ export default {
   Set_Visit_Mode,
 
   Set_DriverOnline,
+  
+  /*
+  Set_Disconnect_Callback(callback);
+  Set callback function for device disconnection
+  parameter:
+  callback: function to call when device disconnects
+  */
+  Set_Disconnect_Callback,
 
   /*fllowing is parameter */
   /*device flash data */

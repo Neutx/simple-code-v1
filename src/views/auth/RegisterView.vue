@@ -151,7 +151,6 @@
         <span class="copyright">© 2025 Kreo</span>
       </div>
     </div>
-    <BetaLogo />
   </div>
 </template>
 
@@ -160,13 +159,12 @@ import { mapGetters } from 'vuex'
 import { createRegisterComposable } from '@/scripts/auth/register'
 import Lottie from 'vue-lottie/src/lottie.vue'
 import animationData from '@/../public/img/home-bg.json'
-import BetaLogo from '@/components/BetaLogo.vue';
+
 
 export default {
   name: 'RegisterView',
   components: {
-    Lottie,
-    BetaLogo
+    Lottie
   },
   data() {
     return {

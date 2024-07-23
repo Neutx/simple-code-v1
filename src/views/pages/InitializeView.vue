@@ -46,7 +46,7 @@
       
       <!-- Browser support info -->
       <div class="browser-support">
-        <p class="browser-text">Currently supports Google Chrome, MS Edge and Opera</p>
+        <p class="browser-text">Currently supports chromium based browsers like Google Chrome, MS Edge and Opera</p>
       </div>
 
       <!-- Error notification -->
@@ -55,14 +55,13 @@
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
             <path d="M10 0C4.48 0 0 4.48 0 10C0 15.52 4.48 20 10 20C15.52 20 20 15.52 20 10C20 4.48 15.52 0 10 0ZM11 15H9V13H11V15ZM11 11H9V5H11V11Z" fill="white"/>
           </svg>
-        </div>
+        </div>  
         <div class="error-content">
           <div class="error-title">Connection error</div>
           <div class="error-description">The device you tried to connect, is not supported by us currently. Please retry with a different device</div>
         </div>
       </div>
     </div>
-    <BetaLogo />
   </div>
 </template>
 
@@ -70,12 +69,10 @@
 import { mapGetters } from 'vuex'
 import { createInitializeComposable } from '@/scripts/device/initialize'
 import HIDHandle from '@/assets/js/HIDHandle'
-import BetaLogo from '@/components/BetaLogo.vue';
 
 export default {
   name: 'InitializeView',
   components: {
-    BetaLogo
   },
   data() {
     return {

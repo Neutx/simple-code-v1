@@ -90,11 +90,46 @@ const router = new VueRouter({
 router.beforeEach((to, from, next) => {
   const isAuthenticated = store.getters['auth/isAuthenticated']
   const isInitialized = store.getters['auth/initialized']
-  const isDeviceConnected = HIDHandle.deviceInfo.deviceOpen // Check device connection directly
+  
+  // Check device connection more comprehensively
+  const device = HIDHandle.deviceInfo
+  const isConnecting = store.getters['device/isConnecting']
+  const isDeviceConnected = device.deviceOpen && (device.isWired || device.online)
 
-  // If trying to access dashboard routes without a device, redirect to initialize
+  // If trying to access dashboard routes without a properly connected device, redirect to initialize
   if (to.path.startsWith('/dashboard') && !isDeviceConnected) {
+    // If a connection is in progress, wait for it to complete
+    if (isConnecting) {
+      const unwatch = store.watch(
+        () => store.getters['device/isConnecting'],
+        (connecting) => {
+          if (!connecting) {
+            unwatch()
+            // Re-evaluate the guard after connection attempt
+            router.push(to.path).catch(err => {
+              if (err.name !== 'NavigationDuplicated' && err.name !== 'NavigationRedirected') {
+                console.error(err)
+              }
+            })
+          }
+        }
+      )
+      return // Wait for the watch to trigger
+    }
+
+    console.log("🔄 Navigation guard: Device not connected, redirecting to /initialize", {
+      deviceOpen: device.deviceOpen,
+      isWired: device.isWired,
+      online: device.online,
+      to: to.path
+    })
     next('/initialize')
+    return
+  }
+  
+  // Allow authenticated users to access initialize page (for device reconnection)
+  if (to.path === '/initialize' && isAuthenticated) {
+    next()
     return
   }
   
@@ -120,9 +155,13 @@ router.beforeEach((to, from, next) => {
             return
           }
           
-          // If authenticated and trying to go to login/register, redirect to dashboard
+          // If authenticated and trying to go to login/register, redirect to dashboard (but only if device is connected)
           if (isAuth && (to.path === '/login' || to.path === '/register' || to.path === '/forgot-password')) {
-            next('/dashboard')
+            if (isDeviceConnected) {
+              next('/dashboard')
+            } else {
+              next('/initialize')
+            }
             return
           }
           
@@ -146,14 +185,29 @@ router.beforeEach((to, from, next) => {
     return
   }
   
-  // If authenticated and trying to go to login/register, redirect to dashboard
+  // If authenticated and trying to go to login/register, redirect to dashboard (but only if device is connected)
   if (isAuthenticated && (to.path === '/login' || to.path === '/register' || to.path === '/forgot-password')) {
-    next('/dashboard')
+    if (isDeviceConnected) {
+      next('/dashboard')
+    } else {
+      next('/initialize')
+    }
     return
   }
   
   // Allow all other navigation
   next()
 })
+
+router.onError(error => {
+  // The "Redirected" error is expected when our navigation guards redirect.
+  // It's not a real error, so we can safely ignore it.
+  if (/Redirected when going from/.test(error.message) || error.name === 'NavigationDuplicated') {
+    return;
+  }
+  
+  // Log all other router errors that we don't expect
+  console.error('Unhandled Router Error:', error);
+});
 
 export default router 

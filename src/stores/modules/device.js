@@ -1,11 +1,37 @@
 import HIDHandle from '@/assets/js/HIDHandle'
-import { 
-  doc, 
-  setDoc, 
-  getDoc, 
-  serverTimestamp 
+import {
+  doc,
+  setDoc,
+  getDoc,
+  serverTimestamp
 } from 'firebase/firestore'
 import { db } from '@/utils/firebase'
+import router from '@/router'
+import { createNavigationComposable } from '@/scripts/dashboard/navigation'
+
+const navigation = createNavigationComposable(router)
+
+// Set up disconnect callback when HIDHandle is imported
+HIDHandle.Set_Disconnect_Callback(() => {
+  console.log("📞 HIDHandle disconnect callback triggered")
+
+  try {
+    // Safely get current path with fallback
+    const currentPath = router.currentRoute?.value?.path || window.location.pathname
+    console.log("Current path:", currentPath)
+
+    if (currentPath !== '/initialize' && !currentPath.startsWith('/auth')) {
+      console.log("🔄 Physical disconnect detected - redirecting to /initialize")
+      navigation.goBack()
+    }
+  } catch (error) {
+    console.error("Error in disconnect callback:", error)
+    // Fallback to window location
+    if (window.location.pathname !== '/initialize' && !window.location.pathname.startsWith('/auth')) {
+      window.location.href = '/initialize'
+    }
+  }
+})
 
 const state = {
   connected: false,
@@ -74,19 +100,19 @@ const actions = {
   async connectDevice({ commit, dispatch, rootState }) {
     commit('SET_CONNECTING', true)
     commit('CLEAR_ERROR')
-    
+
     try {
       console.log("🔄 Store: Starting device connection...")
-      
+
       const filters = []
-      
+
       if (await HIDHandle.Request_Device(filters)) {
         const info = await HIDHandle.Get_Device_Info()
         console.log("🔍 Store: Device info retrieved:", info)
-        
+
         if ((info.cid != 0) && (info.mid != 0)) {
           console.log("✅ Store: Valid device, configuring...")
-          
+
           HIDHandle.deviceInfo.mouseCfg.sensor.cfg = {
             range: [
               {
@@ -104,23 +130,23 @@ const actions = {
             ]
           }
           HIDHandle.deviceInfo.mouseCfg.keysCount = 6
-          
+
           console.log("🔧 Store: Sensor configured, connecting...")
-          
+
           await HIDHandle.Device_Connect()
-          
+
           console.log("🎉 Store: Device connected successfully!")
           console.log("📊 Store: HIDHandle state:", HIDHandle.deviceInfo)
-          
+
           commit('SET_DEVICE_INFO', HIDHandle.deviceInfo)
           commit('SET_CONNECTED', true)
-          
+
           console.log("🔗 Device connection established - HIDHandle.deviceInfo updated")
-          
+
           if (HIDHandle.deviceInfo.battery) {
             commit('SET_BATTERY', HIDHandle.deviceInfo.battery)
           }
-          
+
           if (rootState.auth.user) {
             dispatch('saveDeviceConnection', {
               userId: rootState.auth.user.uid,
@@ -129,9 +155,9 @@ const actions = {
               console.error('Error saving device connection:', error)
             })
           }
-          
+
           dispatch('startRealTimeMonitoring')
-          
+
           return true
         } else {
           console.error("❌ Store: Invalid device - cid or mid is 0")
@@ -154,30 +180,68 @@ const actions = {
 
   startRealTimeMonitoring({ commit }) {
     console.log("🔄 Starting real-time HIDHandle monitoring...")
-    
+
+    if (window.deviceMonitorInterval) {
+      clearInterval(window.deviceMonitorInterval)
+    }
+
     const monitorInterval = setInterval(() => {
-      if (HIDHandle.deviceInfo.deviceOpen) {
+      const device = HIDHandle.deviceInfo
+
+      // Check if device is effectively connected
+      // For wired: just need deviceOpen to be true
+      // For wireless: need both deviceOpen AND online to be true
+      const isEffectivelyConnected = device.deviceOpen && (device.isWired || device.online)
+
+      if (isEffectivelyConnected) {
         commit('SYNC_WITH_HIDHANDLE')
-        
+
         console.log("📊 Real-time sync:", {
-          connected: HIDHandle.deviceInfo.deviceOpen,
-          connectState: HIDHandle.deviceInfo.connectState,
-          battery: HIDHandle.deviceInfo.battery.level + "%",
-          dpi: HIDHandle.deviceInfo.mouseCfg.dpis[HIDHandle.deviceInfo.mouseCfg.currentDpi]?.value,
-          reportRate: HIDHandle.deviceInfo.mouseCfg.reportRate + "Hz",
-          online: HIDHandle.deviceInfo.online,
+          connected: device.deviceOpen,
+          connectState: device.connectState,
+          battery: device.battery.level + "%",
+          dpi: device.mouseCfg.dpis[device.mouseCfg.currentDpi]?.value,
+          reportRate: device.mouseCfg.reportRate + "Hz",
+          online: device.online,
+          isWired: device.isWired,
           timestamp: new Date().toISOString()
         })
       } else {
+        // Device disconnected or went offline - handle disconnection
+        console.log("❌ Device disconnected or offline - stopping monitoring and redirecting", {
+          deviceOpen: device.deviceOpen,
+          online: device.online,
+          isWired: device.isWired,
+          connectState: device.connectState
+        })
+
+        // Stop the monitoring interval first to prevent multiple triggers
         clearInterval(monitorInterval)
+        window.deviceMonitorInterval = null
+
+        // Update state
         commit('SET_CONNECTED', false)
-        console.log("❌ Device disconnected - stopping monitoring")
+        commit('SET_DEVICE_INFO', null)
+        commit('SET_CURRENT_SETTINGS', null)
+        commit('SET_BATTERY', { level: 0, charging: false })
+
+        // Redirect to initialize page if not already there
+        try {
+          const currentPath = router.currentRoute?.value?.path || window.location.pathname
+          if (currentPath !== '/initialize' && !currentPath.startsWith('/auth')) {
+            console.log("🔄 Redirecting to /initialize page due to device disconnection")
+            navigation.goBack()
+          }
+        } catch (error) {
+          console.error("Error in monitoring redirect:", error)
+          if (window.location.pathname !== '/initialize' && !window.location.pathname.startsWith('/auth')) {
+            window.location.href = '/initialize'
+          }
+        }
       }
-    }, 1000)
-    
-    if (!window.deviceMonitorInterval) {
-      window.deviceMonitorInterval = monitorInterval
-    }
+    }, 1500) // Check every 1.5 seconds
+
+    window.deviceMonitorInterval = monitorInterval
   },
 
   stopRealTimeMonitoring() {
@@ -212,7 +276,7 @@ const actions = {
   async saveDeviceConnection(context, { userId, deviceInfo }) {
     try {
       const deviceRef = doc(db, 'users', userId, 'devices', deviceInfo.cid + '_' + deviceInfo.mid)
-      
+
       const deviceData = {
         cid: deviceInfo.cid,
         mid: deviceInfo.mid,
@@ -220,12 +284,12 @@ const actions = {
         lastConnected: serverTimestamp(),
         connectionCount: 1
       }
-      
+
       const existingDoc = await getDoc(deviceRef)
       if (existingDoc.exists()) {
         deviceData.connectionCount = existingDoc.data().connectionCount + 1
       }
-      
+
       await setDoc(deviceRef, deviceData, { merge: true })
     } catch (error) {
       console.error('Error saving device connection:', error)
@@ -235,17 +299,17 @@ const actions = {
   async saveDeviceSettings({ commit, rootState }, settings) {
     try {
       if (!rootState.auth.user || !state.deviceInfo) return
-      
+
       const deviceId = state.deviceInfo.cid + '_' + state.deviceInfo.mid
       const settingsRef = doc(db, 'users', rootState.auth.user.uid, 'deviceSettings', deviceId)
-      
+
       const settingsData = {
         deviceId: deviceId,
         settings: settings,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       }
-      
+
       await setDoc(settingsRef, settingsData, { merge: true })
       commit('SET_CURRENT_SETTINGS', settings)
     } catch (error) {
@@ -257,16 +321,16 @@ const actions = {
   async loadDeviceSettings({ commit, rootState }, deviceId) {
     try {
       if (!rootState.auth.user) return null
-      
+
       const settingsRef = doc(db, 'users', rootState.auth.user.uid, 'deviceSettings', deviceId)
       const settingsDoc = await getDoc(settingsRef)
-      
+
       if (settingsDoc.exists()) {
         const settings = settingsDoc.data().settings
         commit('SET_CURRENT_SETTINGS', settings)
         return settings
       }
-      
+
       return null
     } catch (error) {
       commit('SET_ERROR', error.message)

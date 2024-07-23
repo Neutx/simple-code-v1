@@ -7,6 +7,18 @@ export const createInitializeComposable = (store, router, message) => {
   let showError = false;
   let hasNavigated = false;
 
+  const navigateToDashboard = () => {
+    if (!hasNavigated) {
+      hasNavigated = true;
+      router.push("/dashboard/home").catch(err => {
+        // This error is expected if a navigation guard redirects, so we can safely ignore it.
+        if (err.name !== 'NavigationRedirected') {
+          console.error('Router push error:', err);
+        }
+      });
+    }
+  };
+
   const goBack = () => {
     router.go(-1);
   };
@@ -28,6 +40,7 @@ export const createInitializeComposable = (store, router, message) => {
     if (connecting || hasNavigated) return;
 
     connecting = true;
+    store.commit('device/SET_CONNECTING', true);
     console.log("🔄 Starting device connection process...");
 
     try {
@@ -47,10 +60,7 @@ export const createInitializeComposable = (store, router, message) => {
           message.success("Connected successfully! (Development Mode)");
         }
 
-        if (!hasNavigated) {
-          hasNavigated = true;
-          router.push("/dashboard/home");
-        }
+        navigateToDashboard();
 
         return true;
       }
@@ -107,10 +117,7 @@ export const createInitializeComposable = (store, router, message) => {
             message.success("Device connected successfully!");
           }
 
-          if (!hasNavigated) {
-            hasNavigated = true;
-            router.push("/dashboard/home");
-          }
+          navigateToDashboard();
 
           return true;
         } else {
@@ -129,6 +136,7 @@ export const createInitializeComposable = (store, router, message) => {
       return false;
     } finally {
       connecting = false;
+      store.commit('device/SET_CONNECTING', false);
     }
   };
 
@@ -178,10 +186,7 @@ export const createInitializeComposable = (store, router, message) => {
             message.success("Device paired successfully!");
           }
 
-          if (!hasNavigated) {
-            hasNavigated = true;
-            router.push("/dashboard/home");
-          }
+          navigateToDashboard();
 
           return true;
         } else {
