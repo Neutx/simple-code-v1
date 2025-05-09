@@ -1,0 +1,478 @@
+{
+    "Language":"English",
+
+    "Welcome":"Welcome to Control HUB WEB",
+    "SelectDevice":"Here you can set up your device. Including buttons, sensor, lights and others",
+    "SupportBrowser":"Supports Google Chrome，Microsoft Edge，Opera，and other browers",
+    "SupportSystem":"Supports Windows，Mac OS，Linux and other operation systems",
+    "Connect":"Connect device +",
+    "OperationTips":"How to use: Click <Connect device> →Select USB device →Click <Connect> →Enter into device control homepage",
+    "PairButtonTips":"Pair new receiver",
+    "PairTips":"Plug in new receiver →Click space key →In the pop-up window，select the receiver →Conect →Pair",
+    "Version":"Version:",
+ 
+    "KeyOptions":[
+        {
+            "value":"1",
+            "label":"Buttons",
+            "children":[
+                {
+                    "value":"0x0100",
+                    "label":"Left Click"
+                },
+                {
+                    "value":"0x0200",
+                    "label":"Right Click"
+                },
+                {
+                    "value":"0x0400",
+                    "label":"Wheel Click"
+                },
+                {
+                    "value":"0x1000",
+                    "label":"Forward"
+                },
+                {
+                    "value":"0x0800",
+                    "label":"Backward"
+                }
+            ]
+        },
+        {
+            "value":"7",
+            "label":"Polling rate switch"
+        },
+        {
+            "value":"4",
+            "label":"Fire key"
+        }, 
+        {
+            "value":"5",
+            "label":"Combo key"
+        },
+        {
+            "value":"0",
+            "label":"Disable"
+        }, 
+        {
+            "value":"3",
+            "label":"Scroll Left/Right",
+            "children":[
+                {
+                    "value":"0x0100",
+                    "label":"Scroll Left"
+                },
+                {
+                    "value":"0x0200",
+                    "label":"Scroll Right"
+                }
+            ]
+        },  
+        {
+            "value":"2",
+            "label":"DPI switch",
+            "children":[
+                {
+                    "value":"0x0100",
+                    "label":"DPI loop"
+                },
+                {
+                    "value":"0x0200",
+                    "label":"DPI+"
+                },
+                {
+                    "value":"0x0300",
+                    "label":"DPI-"
+                }
+            ]
+        },  
+        {
+            "value":"1005",
+            "label":"Multimedia",
+            "children":[
+                {
+                    "value":"0x0183",
+                    "label":"Media player"
+                },
+                {
+                    "value":"0x00CD",
+                    "label":"Play/Pause"
+                },
+                {
+                    "value":"0x00B5",
+                    "label":"Next Track"
+                },
+                {
+                    "value":"0x00B6",
+                    "label":"Previous Track"
+                },
+                {
+                    "value":"0x00B7",
+                    "label":"Stop"
+                },
+                {
+                    "value":"0x00E2",
+                    "label":"Mute"
+                },
+                {
+                    "value":"0x00E9",
+                    "label":"Volume+"
+                },
+                {
+                    "value":"0x00EA",
+                    "label":"Volume-"
+                },
+                {
+                    "value":"0x018A",
+                    "label":"Email"
+                },
+                {
+                    "value":"0x0192",
+                    "label":"Calculator"
+                },
+                {
+                    "value":"0x0194",
+                    "label":"My Computer"
+                },
+                {
+                    "value":"0x0223",
+                    "label":"Homepage"
+                },
+                {
+                    "value":"0x0221",
+                    "label":"Search"
+                },
+                {
+                    "value":"0x0225",
+                    "label":"Next page"
+                },
+                {
+                    "value":"0x0224",
+                    "label":"Previous page"
+                },
+                {
+                    "value":"0x0226",
+                    "label":"Stop page"
+                },
+                {
+                    "value":"0x0227",
+                    "label":"Refresh page"
+                },
+                {
+                    "value":"0x022A",
+                    "label":"Favorites"
+                }
+            ]
+        },
+        {
+            "value":"6",
+            "label":"Macro",
+            "children":[]
+        }    
+    ],
+    "DebounceTime":"Debounce Time",
+    "DebounceTimeUint":"ms",
+    "ProfileOptions":[
+        {
+            "value":0,
+            "option":"Profile 1"
+        },
+        {
+            "value":1,
+            "option":"Profile 2"
+        },
+        {
+            "value":2,
+            "option":"Profile 3"
+        },
+        {
+            "value":3,
+            "option":"Profile 4"
+        }      
+    ],
+    "Export":"Export",
+    "Import":"Import",
+    "Restore":"Restore",
+
+    "SensorSetting":"Sensor settings",
+    "DPISetting":"DPI of Stages",
+    "ReportRate":"Polling Rate",
+    "ReportRates":[
+        {
+            "value":8,
+            "rate":125,
+            "option":"125Hz"
+        },
+        {
+            "value":4,
+            "rate":250,
+            "option":"250Hz"
+        },
+        {
+            "value":2,
+            "rate":500,
+            "option":"500Hz"
+        },
+        {
+            "value":1,
+            "rate":1000,
+            "option":"1000Hz"
+        },
+        {
+            "value":16,
+            "rate":2000,
+            "option":"2000Hz"
+        },
+        {
+            "value":32,
+            "rate":4000,
+            "option":"4000Hz"
+        },
+        {
+            "value":64,
+            "rate":8000,
+            "option":"8000Hz"
+        }    
+    ],
+    "SensorMode":"Select mode",
+    "SensorModeTips":"Select mode",
+    "SensorModeOptions":[
+        {
+            "value":0,
+            "option":"LP"
+        },
+        {
+            "value":1,
+            "option":"HP"
+        },
+        {
+            "value":256,
+            "option":"Corded"
+        }
+    ],
+    "LOD":"LOD",
+    "LODTips":"LOD",
+    "LODOptions":[
+        {
+            "value":3,
+            "option":"0.7mm"
+        },
+        {
+            "value":1,
+            "option":"1mm"
+        },
+        {
+            "value":2,
+            "option":"2mm"
+        }
+    ],
+    "Performance":"Highest performance",
+    "PerformanceTips":"Highest performance",
+    "PerformanceOptions":[
+        {
+            "value":1,
+            "option":"10sec"
+        },
+        {
+            "value":3,
+            "option":"30sec"
+        },
+        {
+            "value":6,
+            "option":"1min"
+        },
+        {
+            "value":12,
+            "option":"2min"
+        },
+        {
+            "value":30,
+            "option":"5min"
+        },
+        {
+            "value":60,
+            "option":"10min"
+        },
+        {
+            "value":90,
+            "option":"15min"
+        }
+    ],
+    "Ripple":"Ripple control",
+    "RippleTips":"Ripple control",
+    "Angle":"Angle snap",
+    "AngleTips":"Angle snap",
+    "MotionSync":"Motion sync",
+    "MotionSyncTips":"Motion sync",
+    "DPIEffect":"DPI effect",
+    "DPIEffectOptions":[
+        {
+            "value":0,
+            "option":"Off"
+        },
+        {
+            "value":1,
+            "option":"Steady"
+        },
+        {
+            "value":2,
+            "option":"Breathing"
+        }
+    ],
+    "Brightness":"Brightness",
+    "Speed":"Speed",
+
+    "Macro":"Macro",
+    "MacroList":"Macro list",
+    "NewMacro":"New Macro",
+    "Modify":"Modify",
+    "Delete":"Delete",
+    "KeyList":"List of keys",
+    "StartRecord":"Start recording",
+    "StopRecord":"Stop recording",
+    "AutoDelay":"Auto insert delay",
+    "DefaultDelay":"Default delay",
+    "UntilThisReleased":"Cycle until the button is released",
+    "UntilAnyPressed":"Cycle until any button is pressed",
+    "UntilThisPressed":"Cycle until the button is pressed",
+    "CycleTimes":"Cycle Times",
+    "InsertEvent":"Insert command",
+    "InsertEventOptions":[
+        {
+            "command":0,       
+            "option":"Press"
+          },{
+            "command":1,
+            "option":"Release"        
+          },{
+            "command":2,
+            "value":"0x040001",
+            "option":"Left Click"        
+          },{
+            "command":3,
+            "value":"0x040002",
+            "option":"Right Click"
+          },{
+            "command":4,
+            "value":"0x040004",
+            "option":"Middle Click"        
+          },{
+            "command":5,
+            "value":"0x040010",
+            "option":"Forward"
+          },{
+            "command":6,
+            "value":"0x040008",
+            "option":"Backward"        
+          }
+    ],
+    "Save":"Save",
+
+    "LightMode":"Display light effects",
+    "LightModeOptions":[
+        {
+            "value":0,
+            "option":"Off"
+        },
+        {
+            "value":1,
+            "option":"Rainbow"
+        },
+        {
+            "value":2,
+            "option":"Single Color Breath"
+        },
+        {
+            "value":3,
+            "option":"Fixed Color"
+        },
+        {
+            "value":4,
+            "option":"Neon"
+        },
+        {
+            "value":5,
+            "option":"Rainbow Breath"
+        },
+        {
+            "value":6,
+            "option":"Fixed Rainbow"
+        }
+    ],
+    "MovingOffLight":"Turn off lights while moving",
+    "LightOffTime":"Time until lights turn off after stationary",
+    "LightOffTimeOptions":[
+        {
+            "value":1,
+            "option":"10sec"
+        },
+        {
+            "value":3,
+            "option":"30sec"
+        },
+        {
+            "value":6,
+            "option":"1min"
+        },
+        {
+            "value":12,
+            "option":"2min"
+        },
+        {
+            "value":30,
+            "option":"5min"
+        },
+        {
+            "value":60,
+            "option":"10min"
+        },
+        {
+            "value":90,
+            "option":"15min"
+        }
+    ],
+    "CustomColor":"Custom color",
+    "Preview":"Preview",
+    "Preset":"Preset",
+
+    "SelectLanguage":"Select Language",
+    "DeviceSetting":"Device Settings",
+    "DeviceInfo":"Device Information",
+    "DongleVersion":"Receiver Firmware ver: ",
+    "MouseVersion":"Mouse Firmware ver: ",
+    "PairTool":"Pair tool",
+    "Pair":"Pair",
+    "StartPair":"Start pairing",
+    "Pairing":"Pairing",
+    "PairSuccess":"Success",
+    "PairFail":"Fail",
+    "SleepTime":"Sleep Time",
+    "AdvancedSetting":"Advanced Settings",
+    "LongDistance":"Long distance mode",
+    "LongDistanceTips":"(In long-distance mode, when the distance is farther, the anti-interference ability and current power will be stronger, and the battery life will shorten)",
+
+    "Cancel":"Cancel",
+    "OK":"OK",
+    "DialogDeviceUnsupport":"This device is not supported",
+    "DialogUpdating":"Please wait，updating",
+    "DialogOffline":"Wireless device offline，please move or power-on your device",
+    "DialogDebounceTips":"Warning: If delay time is reduced, selection error may occur. If this occurs, please increase delay time until the problem stops",
+    "DialogConfigError":"Imported config error",
+    "DialogEConfigMismatch":"Imported config does not match the device",
+    "DialogRestore":"Confirm restoration ？",
+    "DialogRestoring":"Please wait，device is restoring",
+    "DialogExportName":"Please enter the file name",
+    "DialogSameMacroName":"This macro name is already being used",
+    "DialogSelectMacroFirst":"Please select a macro",
+    "DialogInputMacroName":"Please enter the macro name",
+    "DialogDeleteMacro":"Confirm delete ？",
+    "DialogMaxMacroKey":"Macro Key max number reached",
+    "DialogStopRecordFirst":"Please stop recording macro first",
+    "DialogSaveMacroFirst":"Please save macro first",
+    "DialogFireKeyTimes":"Times（0-3）",
+    "DialogFireKeyInterval":"Interval（10-255）",
+    "DialogFireKeyTips":"Set repeat time to 0, macro repeats when key is continuously pressed, macro stops when key is released.",
+    "DialogShortcutKeyTips":"Please enter keystroke",
+    "DialogKeepLeftKey":"Must keep left key",
+    "DialogPairTips":"To open pairing mode, press the left, right, and middle button together for 3 seconds until the light flashes. Move the mouse closer to the reciever. Then，press the space bar or click <Start Pair>"
+}

@@ -1,0 +1,89 @@
+.flex_center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.flex_column {
+  display: flex; 
+  flex-direction: column;
+}
+
+.flex_column_start {
+  display: flex; 
+  flex-direction: column;
+  align-items:start;
+}
+
+.flex_column_center {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.flex_column_end {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.flex_row_start {
+  display: flex;
+  flex-direction: row;
+  align-items:start;
+}
+
+.flex_row_center {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.flex_row_end {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+select {
+  width: 120px;
+  height: 40px;
+  font-size: 20px;
+}
+
+.function_width {
+  width: 90vw;
+}
+
+.margin_left {
+  margin-left: 20px;
+}
+
+h1 {
+  font-size: 20px;
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
+/* table的尺寸*/
+.el-table {
+  background: transparent;
+  border: 1px solid #777777;
+  width:380px;
+  height:30vh;
+}
+
+.el-table::before {
+  height: 0px;
+}
+
+.el-table__empty-text {
+  display: none;
+}
+
+.el-table thead {
+  display:none;
+}
