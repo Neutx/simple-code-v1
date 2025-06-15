@@ -1,18 +1,31 @@
 import Vue from 'vue'
-import App from './App.vue'
-
+import VueCompositionAPI from '@vue/composition-api'
 import ElementUI from 'element-ui'
-import './assets/style/element-variables.scss'
+
+import App from './App.vue'
+import router from './router'
+import store from './stores'
+
+// Import global styles
 import '@/assets/style/global.scss'
+import '@/assets/style/element-variables.scss'
+
+// Use plugins
+Vue.use(VueCompositionAPI)
+Vue.use(ElementUI)
+
+// Global event bus (keeping for backward compatibility with existing components)
+Vue.prototype.$bus = new Vue()
 
 Vue.config.productionTip = false
 
-Vue.use(ElementUI)
-
+// Initialize app immediately and handle auth in background
 new Vue({
+  router,
+  store,
   render: h => h(App),
-
-  beforeCreate() {
-    Vue.prototype.$bus = this; //安装全局总线
-  }
 }).$mount('#app')
+
+store.dispatch('auth/initAuth').catch(error => {
+  console.error('Firebase auth initialization failed:', error)
+})

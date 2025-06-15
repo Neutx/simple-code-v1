@@ -1,3 +1,30 @@
+// Import modular styles
+@import './variables.scss';
+@import './utilities.scss';
+@import './animations.scss';
+
+// Base styles
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+#app {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+/* Global transitions */
+* {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Legacy utility classes (keeping for backward compatibility) */
 .flex_center {
   display: flex;
   justify-content: center;
@@ -12,7 +39,7 @@
 .flex_column_start {
   display: flex; 
   flex-direction: column;
-  align-items:start;
+  align-items: start;
 }
 
 .flex_column_center {
@@ -31,7 +58,7 @@
 .flex_row_start {
   display: flex;
   flex-direction: row;
-  align-items:start;
+  align-items: start;
 }
 
 .flex_row_center {
@@ -48,6 +75,7 @@
   align-items: center;
 }
 
+/* Legacy component styles */
 select {
   width: 120px;
   height: 40px;
@@ -68,12 +96,12 @@ h1 {
   margin-bottom: 20px;
 }
 
-/* table的尺寸*/
+/* Element UI table customization */
 .el-table {
   background: transparent;
   border: 1px solid #777777;
-  width:380px;
-  height:30vh;
+  width: 380px;
+  height: 30vh;
 }
 
 .el-table::before {
@@ -85,5 +113,5 @@ h1 {
 }
 
 .el-table thead {
-  display:none;
+  display: none;
 }
