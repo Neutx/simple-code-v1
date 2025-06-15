@@ -38,6 +38,12 @@ export const createLoginComposable = (store, router, message) => {
         password: form.password,
         rememberMe: form.rememberMe
       })
+
+      if (form.rememberMe) {
+        localStorage.setItem('savedEmail', form.email)
+      } else {
+        localStorage.removeItem('savedEmail')
+      }
       
       message.success('Login successful!')
       

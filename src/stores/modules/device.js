@@ -3,8 +3,6 @@ import {
   doc, 
   setDoc, 
   getDoc, 
-  collection,
-  addDoc,
   serverTimestamp 
 } from 'firebase/firestore'
 import { db } from '@/utils/firebase'
@@ -160,6 +158,7 @@ const actions = {
               const result = checkPairStatus()
               if (result !== null) {
                 clearInterval(interval)
+                clearTimeout(timeout)
                 if (result) {
                   resolve(true)
                 } else {
@@ -169,7 +168,7 @@ const actions = {
             }, 1000)
             
             // Timeout after 30 seconds
-            setTimeout(() => {
+            const timeout = setTimeout(() => {
               clearInterval(interval)
               commit('SET_PAIRING', false)
               reject(new Error('Pairing timeout'))
@@ -218,16 +217,17 @@ const actions = {
     try {
       if (!rootState.auth.user || !state.deviceInfo) return
       
-      const settingsRef = collection(db, 'users', rootState.auth.user.uid, 'deviceSettings')
+      const deviceId = state.deviceInfo.cid + '_' + state.deviceInfo.mid
+      const settingsRef = doc(db, 'users', rootState.auth.user.uid, 'deviceSettings', deviceId)
       
       const settingsData = {
-        deviceId: state.deviceInfo.cid + '_' + state.deviceInfo.mid,
+        deviceId: deviceId,
         settings: settings,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       }
       
-      await addDoc(settingsRef, settingsData)
+      await setDoc(settingsRef, settingsData, { merge: true })
       commit('SET_CURRENT_SETTINGS', settings)
     } catch (error) {
       commit('SET_ERROR', error.message)
