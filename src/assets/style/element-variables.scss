@@ -1,9 +1,11 @@
-$--color-primary: #32A07E;
-$--color-success: #67C23A;
-$--color-warning: #FEA523;
-$--color-danger: #DB0000;
-$--color-info: #909399;
+// Element UI theme customization
+$--color-primary: #8b5cf6;
+$--color-success: #10b981;
+$--color-warning: #f59e0b;
+$--color-danger: #ef4444;
+$--color-info: #64748b;
  
 $--font-path: '~element-ui/lib/theme-chalk/fonts';
- 
+
+// Import Element UI styles (warnings are from Element UI's internal files, not our code)
 @import "~element-ui/packages/theme-chalk/src/index";
