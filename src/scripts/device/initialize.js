@@ -1,11 +1,14 @@
 export const createInitializeComposable = (store, router, message) => {
   let initializing = false
+  let hasNavigated = false
 
   const goBack = () => {
     router.go(-1)
   }
 
   const handleInitialize = async () => {
+    if (initializing || hasNavigated) return
+    
     initializing = true
     
     try {
@@ -18,10 +21,11 @@ export const createInitializeComposable = (store, router, message) => {
       // Attempt to connect to device
       const connected = await store.dispatch('device/connectDevice')
       
-      if (connected) {
+      if (connected && !hasNavigated) {
+        hasNavigated = true
         message.success('Device connected successfully!')
         router.push('/dashboard/home')
-      } else {
+      } else if (!connected) {
         message.warning('No compatible device found. Please connect your mouse and try again.')
       }
     } catch (error) {
@@ -32,16 +36,9 @@ export const createInitializeComposable = (store, router, message) => {
     }
   }
 
-  const checkDeviceConnection = (isConnected, router) => {
-    if (isConnected) {
-      router.push('/dashboard/home')
-    }
-  }
-
   return {
     initializing: () => initializing,
     goBack,
-    handleInitialize,
-    checkDeviceConnection
+    handleInitialize
   }
 } 

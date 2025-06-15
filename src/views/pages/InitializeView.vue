@@ -72,8 +72,9 @@ export default {
   },
   
   mounted() {
-    // Check if user is already connected to a device
-    this.initializeLogic.checkDeviceConnection(this.isConnected, this.$router)
+    if (this.isConnected) {
+      this.$router.replace('/dashboard/home')
+    }
   }
 }
 </script>
