@@ -67,7 +67,7 @@ export default {
           id: 'rgb',
           label: 'RGB settings',
           shortLabel: 'RGB',
-          icon: '/icons/rgb.svg'
+          icon: 'tabler:color-filter'
         }
       ]
     }
@@ -106,14 +106,8 @@ export default {
       }
     },
     setActiveTab(id) {
-      // Only update activeTab and navigate if it's different from current route
-      if (this.$route.path !== id) {
-        this.activeTab = id
-        this.navigateToTab(id)
-      }
-      
-      // Emit the tab selection event
-      this.$emit('tab-selected', id)
+      this.activeTab = id
+      this.$emit('tab-changed', id)
     }
   }
 }
