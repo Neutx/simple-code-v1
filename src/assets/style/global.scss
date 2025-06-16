@@ -10,11 +10,19 @@
   box-sizing: border-box;
 }
 
+html, body {
+  width: 100%;
+  height: 100%;
+  background-color: var(--bg-primary, #0a0a0f); /* Fallback for safety */
+  overflow: hidden; /* Prevents scrollbars from causing layout shifts */
+}
+
 #app {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  min-height: 100vh;
+  height: 100%;
+  width: 100%;
   background: var(--bg-primary);
   color: var(--text-primary);
 }
@@ -114,4 +122,39 @@ h1 {
 
 .el-table thead {
   display: none;
+}
+
+/* Dashboard-specific overrides to prevent black bars */
+.dashboard-container {
+  .el-footer,
+  .el-container,
+  .el-main,
+  .el-aside,
+  .el-header {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+  
+  // Override any potential pseudo-elements
+  *::before,
+  *::after {
+    background: transparent !important;
+  }
+}
+
+/* Global override for any component that might create unwanted backgrounds */
+.status-bar,
+.dashboard-footer,
+[class*="status"],
+[class*="footer"],
+[class*="bar"] {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  
+  &::before,
+  &::after {
+    background: transparent !important;
+  }
 }

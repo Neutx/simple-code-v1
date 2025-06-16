@@ -2,18 +2,29 @@
   <div class="navigation-tabs">
     <div 
       v-for="tab in tabs" 
-      :key="tab.name"
-      :class="['nav-tab', { 'active': isActive(tab.path) }]"
-      @click="navigateToTab(tab.path)"
+      :key="tab.id"
+      class="nav-tab"
+      :class="{ active: activeTab === tab.id }"
+      @click="setActiveTab(tab.id)"
     >
-      <div class="tab-icon">
-        <i :class="tab.icon"></i>
-      </div>
-      <span class="tab-label">{{ tab.label }}</span>
+      <!-- Handle SVG files -->
+      <img 
+        v-if="tab.icon.startsWith('/')" 
+        :src="tab.icon" 
+        :alt="tab.label"
+        class="tab-icon"
+      />
+      <!-- Handle Iconify icons -->
+      <IconifyIcon 
+        v-else 
+        :icon="tab.icon" 
+        class="tab-icon"
+      />
+      <span class="tab-label">{{ getTabLabel(tab) }}</span>
     </div>
   </div>
 </template>
-
+    
 <script>
 export default {
   name: 'NavigationTabs',
@@ -25,48 +36,84 @@ export default {
   },
   data() {
     return {
+      windowWidth: window.innerWidth,
+      activeTab: 'home',
       tabs: [
         {
-          name: 'Home',
-          path: '/dashboard/home',
+          id: 'home',
           label: 'Home',
-          icon: 'el-icon-house'
+          shortLabel: 'Home',
+          icon: 'material-symbols:home-outline-rounded'
         },
         {
-          name: 'DPI',
-          path: '/dashboard/dpi',
+          id: 'dpi',
           label: 'DPI settings',
-          icon: 'el-icon-aim'
+          shortLabel: 'DPI',
+          icon: '/icons/dpi.svg'
         },
         {
-          name: 'Keys',
-          path: '/dashboard/keys',
+          id: 'keys',
           label: 'Key remapping',
-          icon: 'el-icon-keyboard'
+          shortLabel: 'Keys',
+          icon: 'solar:mouse-outline'
         },
         {
-          name: 'Sensor',
-          path: '/dashboard/sensor',
+          id: 'sensor',
           label: 'Sensor settings',
-          icon: 'el-icon-cpu'
+          shortLabel: 'Sensor',
+          icon: 'ri:sensor-line'
         },
         {
-          name: 'RGB',
-          path: '/dashboard/rgb',
+          id: 'rgb',
           label: 'RGB settings',
-          icon: 'el-icon-magic-stick'
+          shortLabel: 'RGB',
+          icon: '/icons/rgb.svg'
         }
       ]
     }
+  },
+  mounted() {
+    window.addEventListener('resize', this.handleResize)
+  },
+  beforeDestroy() {
+    window.removeEventListener('resize', this.handleResize)
   },
   methods: {
     isActive(path) {
       return this.currentPath === path || this.$route.path === path
     },
     navigateToTab(path) {
-      if (this.$route.path !== path) {
-        this.$router.push(path)
+      // Check if we're already on this route
+      if (this.$route.path === path) {
+        return // Don't navigate if already on this route
       }
+      
+      this.$router.push(path).catch(err => {
+        // Ignore NavigationDuplicated errors
+        if (err.name !== 'NavigationDuplicated') {
+          console.error('Navigation error:', err)
+        }
+      })
+    },
+    handleResize() {
+      this.windowWidth = window.innerWidth
+    },
+    getTabLabel(tab) {
+      if (this.windowWidth <= 1440) {
+        return tab.shortLabel
+      } else {
+        return tab.label
+      }
+    },
+    setActiveTab(id) {
+      // Only update activeTab and navigate if it's different from current route
+      if (this.$route.path !== id) {
+        this.activeTab = id
+        this.navigateToTab(id)
+      }
+      
+      // Emit the tab selection event
+      this.$emit('tab-selected', id)
     }
   }
 }
@@ -80,11 +127,12 @@ export default {
   gap: 10px;
   padding: 10px;
   background: rgba(64, 64, 64, 0.4);
-  border-radius: 24px;
+  border-radius: clamp(16px, 1vw, 24px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(16px);
   width: fit-content;
   margin: 0 auto;
+  max-width: 90vw;
 }
 
 .nav-tab {
@@ -92,12 +140,18 @@ export default {
   align-items: center;
   gap: 12px;
   padding: 16px 24px;
-  border-radius: 16px;
+  border-radius: clamp(12px, 0.7vw, 18px);
   cursor: pointer;
   transition: all 0.3s ease;
   background: #27272a;
   width: 199px;
   height: 56px;
+  justify-content: flex-start;
+  
+  &.centered {
+    justify-content: center;
+    gap: 8px;
+  }
   
   &:hover {
     background: #3f3f46;
@@ -122,7 +176,24 @@ export default {
   justify-content: center;
   width: 24px;
   height: 24px;
+  flex-shrink: 0;
   
+  // Style for Iconify icons
+  svg {
+    font-size: 16px;
+    color: white;
+    width: 100%;
+    height: 100%;
+  }
+  
+  // Style for SVG images
+  img {
+    width: 100%;
+    height: 100%;
+    filter: brightness(0) invert(1); // Make SVG white
+  }
+  
+  // Legacy Element UI icon styles (for backward compatibility)
   i {
     font-size: 16px;
     color: white;
@@ -135,5 +206,182 @@ export default {
   font-weight: 600;
   font-family: 'DM Sans', sans-serif;
   white-space: nowrap;
+}
+
+// Responsive breakpoints - scale proportionally
+@media (max-width: 1600px) {
+  .navigation-tabs {
+    gap: 8px;
+    padding: 8px;
+  }
+  
+  .nav-tab {
+    gap: 10px;
+    padding: 14px 20px;
+    width: 180px;
+    height: 50px;
+  }
+  
+  .tab-icon {
+    width: 22px;
+    height: 22px;
+    
+    i {
+      font-size: 15px;
+    }
+  }
+  
+  .tab-label {
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 1440px) {
+  .navigation-tabs {
+    gap: 6px;
+    padding: 6px;
+  }
+  
+  .nav-tab {
+    gap: 8px;
+    padding: 12px 18px;
+    width: 160px;
+    height: 45px;
+  }
+  
+  .tab-icon {
+    width: 20px;
+    height: 20px;
+    
+    i {
+      font-size: 14px;
+    }
+  }
+  
+  .tab-label {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .navigation-tabs {
+    gap: 5px;
+    padding: 5px;
+  }
+  
+  .nav-tab {
+    gap: 6px;
+    padding: 10px 15px;
+    width: 140px;
+    height: 40px;
+  }
+  
+  .tab-icon {
+    width: 18px;
+    height: 18px;
+    
+    i {
+      font-size: 13px;
+    }
+  }
+  
+  .tab-label {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .navigation-tabs {
+    gap: 8px;
+    padding: 8px;
+    max-width: 95vw;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+  
+  .nav-tab {
+    gap: 8px;
+    padding: 12px 16px;
+    width: 130px;
+    height: 44px;
+    flex-shrink: 0;
+  }
+  
+  .tab-icon {
+    width: 20px;
+    height: 20px;
+    
+    i {
+      font-size: 14px;
+    }
+  }
+  
+  .tab-label {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 768px) {
+  .navigation-tabs {
+    gap: 6px;
+    padding: 6px;
+    max-width: 100vw;
+  }
+  
+  .nav-tab {
+    gap: 6px;
+    padding: 10px 12px;
+    width: 110px;
+    height: 40px;
+  }
+  
+  .tab-icon {
+    width: 18px;
+    height: 18px;
+    
+    i {
+      font-size: 13px;
+    }
+  }
+  
+  .tab-label {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .navigation-tabs {
+    gap: 4px;
+    padding: 4px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .nav-tab {
+    gap: 8px;
+    padding: 12px 16px;
+    width: 45%;
+    min-width: 120px;
+    height: 44px;
+    margin-bottom: 4px;
+  }
+  
+  .tab-icon {
+    width: 20px;
+    height: 20px;
+    
+    i {
+      font-size: 14px;
+    }
+  }
+  
+  .tab-label {
+    font-size: 12px;
+  }
 }
 </style> 
