@@ -18,8 +18,15 @@ export const createInitializeComposable = (store, router, message) => {
         return
       }
       
+      const connectWithTimeout = Promise.race([
+        store.dispatch('device/connectDevice'),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Connection timeout')), 15000)
+        )
+      ])
+      
       // Attempt to connect to device
-      const connected = await store.dispatch('device/connectDevice')
+      const connected = await connectWithTimeout
       
       if (connected && !hasNavigated) {
         hasNavigated = true
@@ -30,7 +37,11 @@ export const createInitializeComposable = (store, router, message) => {
       }
     } catch (error) {
       console.error('Initialization error:', error)
-      message.error('Failed to initialize device connection')
+      if (error.message === 'Connection timeout') {
+        message.error('Device connection timed out. Please try again.')
+      } else {
+        message.error('Failed to initialize device connection')
+      }
     } finally {
       initializing = false
     }

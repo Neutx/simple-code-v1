@@ -4,17 +4,13 @@
     <div class="dashboard-header">
       <!-- Back Button -->
       <div class="header-left">
-        <BackButton @back="handleBack" />
+        <BackButton @click="handleBack" />
       </div>
       
-      <!-- Kreo Logo -->
-      <div class="header-logo">
-        <KreoLogo :logo-src="'/logos/kreo-logo.svg'" />
-      </div>
-      
-      <!-- Navigation Tabs - Centered -->
-      <div class="header-center">
-        <NavigationTabs :current-path="$route.path" />
+      <!-- Kreo Logo and Navigation Tabs -->
+      <div class="header-main">
+        <KreoLogo />
+        <NavigationTabs @tab-selected="handleTabChange" />
       </div>
       
       <!-- Action Buttons -->
@@ -29,19 +25,28 @@
 
     <!-- Main Content Area -->
     <div class="dashboard-main">
+      <!-- DPI Top Bar -->
+      <DPITopBar 
+        :is-visible="isDPIMode" 
+        @dpi-selected="handleDPISelected"
+      />
+      
       <!-- Mouse Visualization -->
       <div class="mouse-section">
         <MouseVisualization 
-          :device-model="deviceModel"
-          :mouse-image="mouseImageSrc"
+          :src="mouseImageSrc" 
+          :is-dpi-mode="isDPIMode"
         />
       </div>
       
       <!-- Router View for Tab Content -->
       <div class="content-overlay">
-        <router-view />
+        <!-- <router-view /> -->
       </div>
     </div>
+
+    <!-- DPI Settings Panel -->
+    <DPISettings :is-visible="isDPIMode" />
 
     <!-- Status Bar -->
     <div class="dashboard-footer">
@@ -60,21 +65,31 @@
 <script>
 import { mapGetters } from 'vuex'
 import NavigationTabs from '@/components/dashboard/NavigationTabs.vue'
-import StatusBar from '@/components/dashboard/StatusBar.vue'
+
 import MouseVisualization from '@/components/dashboard/MouseVisualization.vue'
 import ActionButtons from '@/components/dashboard/ActionButtons.vue'
 import BackButton from '@/components/dashboard/BackButton.vue'
 import KreoLogo from '@/components/dashboard/KreoLogo.vue'
+import StatusBar from '@/components/dashboard/StatusBar.vue'
+import DPISettings from '@/components/dashboard/DPISettings.vue'
+import DPITopBar from '@/components/dashboard/DPITopBar.vue'
 
 export default {
   name: 'DashboardView',
   components: {
     NavigationTabs,
-    StatusBar,
     MouseVisualization,
     ActionButtons,
     BackButton,
-    KreoLogo
+    KreoLogo,
+    StatusBar,
+    DPISettings,
+    DPITopBar
+  },
+  data() {
+    return {
+      isDPIMode: false
+    }
   },
   computed: {
     ...mapGetters('auth', ['currentUser']),
@@ -82,8 +97,20 @@ export default {
     ...mapGetters('settings', ['dpiSettings', 'pollingRate', 'rgbSettings', 'sensorSettings']),
     
     deviceModel() {
+      // If no device info, return default
       if (!this.deviceInfo) return 'Ikarus'
-      return `${this.deviceInfo.cid}_${this.deviceInfo.mid}` || 'Ikarus'
+      
+      // Check if we have the nested info structure from HIDHandle
+      if (this.deviceInfo.info && this.deviceInfo.info.cid && this.deviceInfo.info.mid) {
+        return this.getDeviceNameFromCidMid(this.deviceInfo.info.cid, this.deviceInfo.info.mid)
+      }
+      
+      // Fallback for direct cid/mid properties (if structure changes)
+      if (this.deviceInfo.cid && this.deviceInfo.mid) {
+        return this.getDeviceNameFromCidMid(this.deviceInfo.cid, this.deviceInfo.mid)
+      }
+      
+      return 'Unknown'
     },
     
     currentDPI() {
@@ -109,9 +136,9 @@ export default {
   },
   
   mounted() {
-    // Redirect to initialize if not connected
-    if (!this.isConnected) {
-      this.$router.push('/initialize')
+    // Redirect to initialize if not connected and not already on the initialize page
+    if (!this.isConnected && this.$route.path !== '/initialize') {
+      this.$router.push('/initialize');
     }
   },
   
@@ -133,6 +160,26 @@ export default {
     handleProfile() {
       // Add profile logic
       this.$message.info('Profile feature coming soon!')
+    },
+    
+    getDeviceNameFromCidMid() {
+     console.log(this.deviceInfo)
+     console.log(this.deviceInfo.info)
+     console.log(this.deviceInfo.info.cid)
+     console.log(this.deviceInfo.info.mid)
+    },
+    
+    handleTabChange(tab) {
+      // Handle tab change logic
+      console.log('Tab changed to:', tab)
+      
+      // Activate DPI mode when DPI tab is selected
+      this.isDPIMode = (tab === 'dpi')
+    },
+    
+    handleDPISelected(dpi) {
+      // Handle DPI selected logic
+      console.log('DPI selected:', dpi)
     }
   }
 }
@@ -140,65 +187,70 @@ export default {
 
 <style lang="scss" scoped>
 .dashboard-container {
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   background: black;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
   overflow: hidden;
-  position: relative;
+}
+
+.dashboard-header,
+.dashboard-main-content,
+.dashboard-footer {
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
 }
 
 .dashboard-header {
+  align-self: start; /* Aligns header to the top of the grid area */
   display: flex;
+  position: absolute !important;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 4.5vh 3vw 0 3vw;
+  z-index: 10;
   justify-content: space-between;
   align-items: center;
-  width: 100%;
-  position: relative;
-  padding: 82px 48px 0 48px;
-  z-index: 10;
-  margin-bottom: 40px;
+  gap: 44px;
+  margin-bottom: 0; /* Remove margin */
+  min-height: auto; /* Remove min-height */
 }
 
 .header-left {
-  flex: 0 0 auto;
+  flex: 0 1 auto; /* Allow shrinking, don't grow */
 }
 
-.header-logo {
-  flex: 0 0 auto;
-  display: flex;
-  justify-content: flex-start;
-  margin-left: 50px;
-  padding-top: 10px;
-}
-
-.header-center {
-  flex: 1;
+.header-main {
+  flex: 1 1 auto;
   display: flex;
   justify-content: center;
-  padding-top: 10px;
-  margin-left: -80px;
+  align-items: center;
+  gap: 2vw;
+  min-width: 0;
 }
 
 .header-right {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
 }
 
-.dashboard-main {
-  flex: 1;
+.dashboard-main-content {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   justify-content: center;
-  position: relative;
-  overflow: hidden;
+  align-items: center;
+  z-index: 1; /* Sits below the header and footer */
 }
 
 .mouse-section {
   position: absolute;
-  top: 50%;
+  top: 45%;
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 1;
+  /* Sizing is now handled by the child component */
 }
 
 .content-overlay {
@@ -212,37 +264,48 @@ export default {
 }
 
 .dashboard-footer {
-  padding: 0 319px 63px 319px;
-  position: relative;
+  align-self: end; /* Aligns footer to the bottom of the grid area */
+  width: 100%;
+  padding: 0 12vw;
+  padding-bottom: 15vh; /* Use viewport height for responsive padding */
   z-index: 10;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
-// Responsive adjustments
-@media (max-width: 1920px) {
+// Responsive breakpoints
+@media (max-width: 1200px) {
   .dashboard-header {
-    padding: 70px 48px 0 48px;
+    padding: 3vh 2vw 0 2vw;
+    gap: 44px;
   }
-  
-  .header-logo {
-    margin-left: 60px;
-  }
-  
-  .dashboard-footer {
-    padding: 0 200px 40px 200px;
+  .header-main {
+    gap: 1.5vw;
   }
 }
 
-@media (max-width: 1440px) {
+@media (max-width: 1024px) {
   .dashboard-header {
-    padding: 70px 48px 0 48px;
+    flex-direction: column;
+    padding: 2vh 2vw;
+    gap: 1vh;
   }
-  
-  .header-logo {
-    margin-left: 40px;
+  .header-main {
+    flex-direction: column;
+    gap: 2vh;
+    order: -1; /* Move logo/nav to the top on mobile */
   }
-  
-  .dashboard-footer {
-    padding: 0 100px 30px 100px;
+  .header-left, .header-right {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-header {
+    padding: 2vh 3vw;
   }
 }
 </style> 

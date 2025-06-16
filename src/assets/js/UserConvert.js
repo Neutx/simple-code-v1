@@ -137,7 +137,7 @@ function Deep_Clone_Array(arr) {
 function Deep_Clone_Object(obj) {
   let result = Array.isArray(obj) ? [] : {};
   for (let key in obj) {
-    if (obj.hasOwnProperty(key)) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
       if (typeof obj[key] === 'object' && obj[key] !== null) {
         result[key] = Deep_Clone_Object(obj[key]);
       } else {

@@ -81,31 +81,9 @@ const router = new VueRouter({
 })
 
 router.beforeEach(async (to, from, next) => {
-  const authLoading = store.getters['auth/loading']
-  
-  if (authLoading && to.matched.some(record => record.meta.requiresAuth)) {
-    try {
-      await Promise.race([
-        new Promise(resolve => {
-          const unwatch = store.watch(
-            () => store.getters['auth/loading'],
-            (loading) => {
-              if (!loading) {
-                unwatch()
-                resolve()
-              }
-            }
-          )
-        }),
-        new Promise(resolve => setTimeout(resolve, 3000))
-      ])
-    } catch (error) {
-      console.warn('Auth initialization timeout')
-    }
-  }
-  
   const isAuthenticated = store.getters['auth/isAuthenticated']
   
+  // Handle routes that require authentication
   if (to.matched.some(record => record.meta.requiresAuth)) {
     if (!isAuthenticated) {
       next('/login')
@@ -113,6 +91,7 @@ router.beforeEach(async (to, from, next) => {
     }
   }
   
+  // Handle routes that require guest (not authenticated)
   if (to.matched.some(record => record.meta.requiresGuest)) {
     if (isAuthenticated) {
       const isConnected = store.getters['device/isConnected']

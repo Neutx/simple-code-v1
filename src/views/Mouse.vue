@@ -7,7 +7,7 @@
           <span>{{battery}}%</span>
           <span v-show="charging" class="margin_left">charging</span>
           <el-button @click="handleCloseClick" class="margin_left">
-            <i class="el-icon-close"></i>
+            <IconifyIcon icon="material-symbols:close" />
           </el-button>
         </div>
       </div>

@@ -70,7 +70,6 @@ const actions = {
         const info = await HIDHandle.Get_Device_Info()
         
         if ((info.cid != 0) && (info.mid != 0)) {
-          // Configure device settings
           HIDHandle.deviceInfo.mouseCfg.sensor.cfg = {
             range: [
               {
@@ -89,16 +88,22 @@ const actions = {
           }
           HIDHandle.deviceInfo.mouseCfg.keysCount = 6
           
-          await HIDHandle.Device_Connect()
+          // Start device connection (this will handle the rest in background)
+          HIDHandle.Device_Connect()
           
           commit('SET_DEVICE_INFO', HIDHandle.deviceInfo)
           commit('SET_CONNECTED', true)
           
-          // Save device connection to user's profile
+          if (HIDHandle.deviceInfo.battery) {
+            commit('SET_BATTERY', HIDHandle.deviceInfo.battery)
+          }
+          // Save device connection to user's profile (non-blocking)
           if (rootState.auth.user) {
-            await dispatch('saveDeviceConnection', {
+            dispatch('saveDeviceConnection', {
               userId: rootState.auth.user.uid,
               deviceInfo: info
+            }).catch(error => {
+              console.error('Error saving device connection:', error)
             })
           }
           

@@ -11,13 +11,13 @@
           @click="initializeLogic.goBack" 
           type="text" 
           class="back-button"
-          icon="el-icon-arrow-left"
         >
+          <IconifyIcon icon="ion:chevron-back" />
         </el-button>
         
         <!-- Kreo Logo -->
         <div class="logo-container">
-          <img src="/logos/kreo-logo.svg" alt="Kreo" class="logo" />
+          <img src="/logos/kreo-navbar.svg" alt="Kreo" class="logo" />
         </div>
         
         <div class="spacer"></div>

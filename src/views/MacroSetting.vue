@@ -21,8 +21,8 @@
       <el-table-column>
         <template slot-scope="scope">
           <div class="flex_row_center">
-            <i class="el-icon-top" v-show="scope.row.status == 1"></i>
-            <i class="el-icon-bottom" v-show="scope.row.status == 0"></i>
+            <IconifyIcon icon="material-symbols:keyboard-arrow-up" v-show="scope.row.status == 1" />
+            <IconifyIcon icon="material-symbols:keyboard-arrow-down" v-show="scope.row.status == 0" />
             <span class="margin_left">{{getKeyText(scope.row)}}</span>
           </div>
         </template>
@@ -30,7 +30,7 @@
       <el-table-column>
         <template slot-scope="scope">
           <div style="display: flex; flex-direction: row;align-items: center;">
-            <i class="el-icon-time margin_left"></i>
+            <IconifyIcon icon="material-symbols:schedule" class="margin_left" />
             <span>{{scope.row.delay}}</span>
           </div>
         </template>
