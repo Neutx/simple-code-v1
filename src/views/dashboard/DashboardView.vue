@@ -10,7 +10,7 @@
       <!-- Kreo Logo and Navigation Tabs -->
       <div class="header-main">
         <KreoLogo />
-        <NavigationTabs @tab-selected="handleTabChange" />
+        <NavigationTabs @tab-changed="handleTabChange" />
       </div>
       
       <!-- Action Buttons -->
@@ -25,19 +25,30 @@
 
     <!-- Main Content Area -->
     <div class="dashboard-main">
-      <!-- DPI Top Bar -->
-      <DPITopBar 
-        :is-visible="isDPIMode" 
-        @dpi-selected="handleDPISelected"
-      />
+      <!-- Mouse Visualization - Regular Mode -->
+      <div class="mouse-section" v-if="!isDPIMode">
+        <MouseVisualization :src="mouseImageSrc" />
+      </div>
       
-      <!-- Mouse Visualization -->
-      <div class="mouse-section">
-        <MouseVisualization 
-          :src="mouseImageSrc" 
-          :is-dpi-mode="isDPIMode"
+      <!-- Animated Mouse for DPI Settings -->
+      <div class="animated-mouse-section" v-if="activeTab === 'dpi'">
+        <AnimatedMouseVisualization 
+          :device-model="deviceModel"
+          :mouse-image="mouseImageSrc"
+          :is-d-p-i-mode="true"
         />
       </div>
+      
+      <!-- DPI Control Bar (only visible in DPI mode) -->
+      <div class="dpi-control-section" v-if="activeTab === 'dpi'">
+        <DPIControlBar 
+          :active-d-p-i="activeDPI"
+          @dpi-changed="handleDPIChange"
+        />
+      </div>
+      
+      <!-- DPI Settings Panel (only visible in DPI mode) -->
+      <DPISettingsPanel v-if="activeTab === 'dpi'" />
       
       <!-- Router View for Tab Content -->
       <div class="content-overlay">
@@ -45,11 +56,8 @@
       </div>
     </div>
 
-    <!-- DPI Settings Panel -->
-    <DPISettings :is-visible="isDPIMode" />
-
     <!-- Status Bar -->
-    <div class="dashboard-footer">
+    <div class="dashboard-footer" v-if="!isDPIMode">
       <StatusBar 
         :device-model="deviceModel"
         :current-d-p-i="currentDPI"
@@ -65,30 +73,32 @@
 <script>
 import { mapGetters } from 'vuex'
 import NavigationTabs from '@/components/dashboard/NavigationTabs.vue'
-
 import MouseVisualization from '@/components/dashboard/MouseVisualization.vue'
+import AnimatedMouseVisualization from '@/components/dashboard/AnimatedMouseVisualization.vue'
+import DPIControlBar from '@/components/dashboard/DPIControlBar.vue'
+import DPISettingsPanel from '@/components/dashboard/DPISettingsPanel.vue'
 import ActionButtons from '@/components/dashboard/ActionButtons.vue'
 import BackButton from '@/components/dashboard/BackButton.vue'
 import KreoLogo from '@/components/dashboard/KreoLogo.vue'
 import StatusBar from '@/components/dashboard/StatusBar.vue'
-import DPISettings from '@/components/dashboard/DPISettings.vue'
-import DPITopBar from '@/components/dashboard/DPITopBar.vue'
 
 export default {
   name: 'DashboardView',
   components: {
     NavigationTabs,
     MouseVisualization,
+    AnimatedMouseVisualization,
+    DPIControlBar,
+    DPISettingsPanel,
     ActionButtons,
     BackButton,
     KreoLogo,
-    StatusBar,
-    DPISettings,
-    DPITopBar
+    StatusBar
   },
   data() {
     return {
-      isDPIMode: false
+      activeTab: 'home',
+      activeDPI: 1 // Default to second profile (1200 DPI)
     }
   },
   computed: {
@@ -96,9 +106,13 @@ export default {
     ...mapGetters('device', ['isConnected', 'deviceInfo', 'battery']),
     ...mapGetters('settings', ['dpiSettings', 'pollingRate', 'rgbSettings', 'sensorSettings']),
     
+    isDPIMode() {
+      return this.activeTab === 'dpi'
+    },
+    
     deviceModel() {
       // If no device info, return default
-      if (!this.deviceInfo) return 'Ikarus'
+      if (!this.deviceInfo) return 'Unknown'
       
       // Check if we have the nested info structure from HIDHandle
       if (this.deviceInfo.info && this.deviceInfo.info.cid && this.deviceInfo.info.mid) {
@@ -114,20 +128,20 @@ export default {
     },
     
     currentDPI() {
-      if (!this.dpiSettings?.stages?.length) return '420'
+      if (!this.dpiSettings || !this.dpiSettings.stages || !this.dpiSettings.stages.length) return '420'
       return this.dpiSettings.stages[this.dpiSettings.current] || '420'
     },
     
     batteryLevel() {
-      return this.battery?.level || 69
+      return this.battery ? this.battery.level : 69
     },
     
     liftOffDistance() {
-      return this.sensorSettings?.liftOffDistance || '1MM'
+      return this.sensorSettings ? this.sensorSettings.liftOffDistance : '1MM'
     },
     
     motionSync() {
-      return this.sensorSettings?.motionSync || true
+      return this.sensorSettings ? this.sensorSettings.motionSync : true
     },
     
     mouseImageSrc() {
@@ -143,6 +157,17 @@ export default {
   },
   
   methods: {
+    handleTabChange(tabId) {
+      this.activeTab = tabId
+      console.log('Tab changed to:', tabId)
+    },
+    
+    handleDPIChange(dpiIndex) {
+      this.activeDPI = dpiIndex
+      console.log('DPI changed to index:', dpiIndex)
+      // Here you would typically update the store or send to device
+    },
+    
     handleBack() {
       this.$router.push('/initialize')
     },
@@ -167,19 +192,6 @@ export default {
      console.log(this.deviceInfo.info)
      console.log(this.deviceInfo.info.cid)
      console.log(this.deviceInfo.info.mid)
-    },
-    
-    handleTabChange(tab) {
-      // Handle tab change logic
-      console.log('Tab changed to:', tab)
-      
-      // Activate DPI mode when DPI tab is selected
-      this.isDPIMode = (tab === 'dpi')
-    },
-    
-    handleDPISelected(dpi) {
-      // Handle DPI selected logic
-      console.log('DPI selected:', dpi)
     }
   }
 }
@@ -251,6 +263,24 @@ export default {
   transform: translate(-50%, -50%);
   z-index: 1;
   /* Sizing is now handled by the child component */
+}
+
+.animated-mouse-section {
+  position: fixed;        /* Fixed to viewport so zoom doesn't shift it */
+  top: 85%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+  /* Sizing is now handled by the child component */
+}
+
+.dpi-control-section {
+  position: fixed;        /* Fixed to viewport so zoom doesn't shift it */
+  top: 20vh;              /* Distance from the top of the screen */
+  left: calc(55% + 30vw); /* Shift it to the right of the centre */
+  transform: translateX(-50%); /* Offset half of its own width */
+  z-index: 15;
+  pointer-events: none;
 }
 
 .content-overlay {
