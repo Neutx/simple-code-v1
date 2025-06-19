@@ -12,21 +12,53 @@
   background: #000000; /* Black background */
 }
 
-.background-gradient {
+.background-lottie {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, #8B5CF6 0%, #A855F7 25%, #C084FC 50%, #DDD6FE 75%, #F3E8FF 100%);
   z-index: 0; /* Behind everything */
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  /* Lottie animation container */
+  > div {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 100vw;
+    min-height: 100vh;
+    
+    svg {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover;
+      min-width: 100vw;
+      min-height: 100vh;
+    }
+  }
+  
+  /* Optional: Add a subtle overlay to maintain readability */
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 50%, rgba(0, 0, 0, 0.2) 100%);
+    z-index: 1;
+    pointer-events: none;
+  }
 }
 
 .login-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  z-index: 1;
+  z-index: 2;
   width: 100%;
   position: relative;
   min-height: 100vh;
@@ -123,12 +155,28 @@
 
 .input-wrapper {
   width: min(384px, calc(90vw - min(80px, 10vw)));
-  height: clamp(40px, 8vw, 48px);
+  height: 48px;
   border-radius: 10px;
   border: 1px solid #6B7280;
   overflow: hidden;
   position: relative;
   background: transparent;
+  transition: all 0.2s ease;
+  
+  /* Focus state - violet border */
+  &:focus-within {
+    border: 1.5px solid #A855F7;
+    border-color: #A855F7;
+  }
+  
+  /* Error state */
+  &.error-state {
+    border: 1px solid #ef4444;
+    
+    &:focus-within {
+      border: 1.5px solid #ef4444;
+    }
+  }
 }
 
 .form-input {
@@ -138,29 +186,113 @@
   background: transparent;
   color: rgba(255, 255, 255, 0.5);
   font-family: 'DM Sans', sans-serif;
-  font-size: clamp(14px, 2.5vw, 16px);
-  font-weight: 600;
-  line-height: 1.5;
-  padding: clamp(4px, 1vw, 6px) clamp(12px, 2vw, 15px);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 36px;
+  padding: 6px 15px;
   outline: none;
+  transition: all 0.2s ease;
   
   &::placeholder {
     color: rgba(255, 255, 255, 0.5);
+    font-weight: 500;
+  }
+  
+  /* When input has value - white text and gray background */
+  &:not(:placeholder-shown) {
+    color: white;
+    background: #374151;
+  }
+  
+  /* Focus state - maintain background if has value */
+  &:focus {
+    color: white;
+    
+    &:not(:placeholder-shown) {
+      background: #374151;
+    }
+    
+    &::placeholder {
+      color: rgba(255, 255, 255, 0.7);
+    }
+  }
+  
+  /* Email field specific styles */
+  &[type="email"] {
+    color: rgba(255, 255, 255, 0.5);
+    
+    &:not(:placeholder-shown) {
+      color: white;
+      background: #374151;
+    }
+    
+    &:focus {
+      color: white;
+      
+      &::placeholder {
+        color: rgba(255, 255, 255, 0.7);
+      }
+    }
   }
   
   /* Password field specific styles */
   &[type="password"] {
     color: rgba(255, 255, 255, 0.5);
-    letter-spacing: 2px;
+    letter-spacing: 3px;
+    font-size: 20px;
+    font-family: monospace;
+    
+    &:not(:placeholder-shown) {
+      color: white;
+      background: #374151;
+    }
+    
+    &:focus {
+      color: white;
+      letter-spacing: 3px;
+      
+      &:not(:placeholder-shown) {
+        background: #374151;
+        color: white;
+      }
+      
+      &:placeholder-shown {
+        background: transparent;
+      }
+    }
+    
+    &::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 16px;
+      letter-spacing: normal;
+    }
   }
   
   /* Error state styles */
   &.error-input {
-    border-color: #ef4444;
+    color: #ef4444;
     
     &::placeholder {
       color: #ef4444 !important;
       font-weight: 600;
+    }
+    
+    &:not(:placeholder-shown) {
+      background: #374151;
+      color: #ef4444;
+    }
+    
+    &[type="password"] {
+      &:not(:placeholder-shown) {
+        background: transparent;
+        color: white;
+      }
+      
+      &:focus:not(:placeholder-shown) {
+        background: transparent;
+        color: white;
+      }
     }
   }
 }

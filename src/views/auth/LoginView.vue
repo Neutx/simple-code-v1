@@ -1,7 +1,14 @@
 <template>
   <div class="login-container">
-    <!-- Background with gradient -->
-    <div class="background-gradient"></div>
+    <!-- Background with Lottie animation -->
+    <div class="background-lottie">
+      <lottie 
+        :options="lottieOptions" 
+        :height="windowHeight" 
+        :width="windowWidth"
+        @animCreated="handleAnimation"
+      />
+    </div>
     
     <!-- Main content -->
     <div class="login-content">
@@ -21,7 +28,7 @@
           <!-- Email Field -->
           <div class="form-group">
             <label for="email" class="form-label">Email</label>
-            <div class="input-wrapper">
+            <div class="input-wrapper" :class="{ 'error-state': loginLogic.errors.email }">
               <input
                 id="email"
                 v-model="loginLogic.form.email"
@@ -38,7 +45,7 @@
           <!-- Password Field -->
           <div class="form-group">
             <label for="password" class="form-label">Password</label>
-            <div class="input-wrapper">
+            <div class="input-wrapper" :class="{ 'error-state': loginLogic.errors.password }">
               <input
                 id="password"
                 v-model="loginLogic.form.password"
@@ -119,12 +126,27 @@
 <script>
 import { mapGetters } from 'vuex'
 import { createLoginComposable } from '@/scripts/auth/login'
+import Lottie from 'vue-lottie/src/lottie.vue'
+import animationData from '@/../public/img/home-bg.json'
 
 export default {
   name: 'LoginView',
+  components: {
+    Lottie
+  },
   data() {
     return {
-      loginLogic: null
+      loginLogic: null,
+      windowWidth: window.innerWidth,
+      windowHeight: window.innerHeight,
+      lottieOptions: {
+        animationData: animationData,
+        autoplay: true,
+        loop: true,
+        rendererSettings: {
+          preserveAspectRatio: 'xMidYMid slice'
+        }
+      }
     }
   },
   computed: {
@@ -134,6 +156,21 @@ export default {
     // Initialize login logic
     this.loginLogic = createLoginComposable(this.$store, this.$router, this.$message)
     this.loginLogic.initializeRememberMe()
+  },
+  mounted() {
+    window.addEventListener('resize', this.handleResize)
+  },
+  beforeDestroy() {
+    window.removeEventListener('resize', this.handleResize)
+  },
+  methods: {
+    handleAnimation(anim) {
+      this.anim = anim
+    },
+    handleResize() {
+      this.windowWidth = window.innerWidth
+      this.windowHeight = window.innerHeight
+    }
   }
 }
 </script>
