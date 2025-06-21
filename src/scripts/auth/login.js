@@ -77,20 +77,13 @@ export const createLoginComposable = (store, router, message) => {
     try {
       await store.dispatch('auth/login', {
         email: form.email,
-        password: form.password,
-        rememberMe: form.rememberMe
+        password: form.password
       })
-
-      if (form.rememberMe) {
-        localStorage.setItem('savedEmail', form.email)
-      } else {
-        localStorage.removeItem('savedEmail')
-      }
       
       message.success('Login successful!')
       
-      const isConnected = store.getters['device/isConnected']
-      router.push(isConnected ? '/dashboard/home' : '/initialize')
+      // Always redirect to initialize page after login
+      router.push('/initialize')
     } catch (error) {
       message.error(error.message || 'Login failed')
     }
@@ -103,8 +96,8 @@ export const createLoginComposable = (store, router, message) => {
       await store.dispatch('auth/loginWithGoogle')
       message.success('Login successful!')
       
-      const isConnected = store.getters['device/isConnected']
-      router.push(isConnected ? '/dashboard/home' : '/initialize')
+      // Always redirect to initialize page after login  
+      router.push('/initialize')
     } catch (error) {
       message.error(error.message || 'Google login failed')
     } finally {
@@ -113,14 +106,8 @@ export const createLoginComposable = (store, router, message) => {
   }
 
   const initializeRememberMe = () => {
-    const rememberMe = localStorage.getItem('rememberMe')
-    if (rememberMe === 'true') {
-      form.rememberMe = true
-      const savedEmail = localStorage.getItem('savedEmail')
-      if (savedEmail) {
-        form.email = savedEmail
-      }
-    }
+    // Simple placeholder function to prevent errors
+    // Remember me functionality has been simplified
   }
 
   return {

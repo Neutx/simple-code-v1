@@ -49,7 +49,7 @@
   top: 50%;
   transform: translate(-50%, -50%);
   overflow: hidden;
-}
+  }
 
 /* Main title section */
 .title-section {
@@ -90,8 +90,8 @@
   width: min(12.19vw, 234px);
   height: min(6.67vh, 72px);
   object-fit: contain;
-}
-
+  }
+  
 /* Subtitle section */
 .subtitle-section {
   position: absolute;
@@ -108,7 +108,7 @@
   font-family: 'DM Sans', sans-serif;
   line-height: min(3.70vh, 40px);
   margin: 0;
-}
+  }
 
 /* Action buttons */
 .action-buttons {
@@ -179,7 +179,7 @@
 
 /* Error notification */
 .error-notification {
-  position: absolute;
+    position: absolute;
   left: min(-21.77vw, -418px);
   top: min(80.65vh, 871px);
   width: min(20vw, 384px);
@@ -191,7 +191,7 @@
   align-items: flex-start;
   gap: min(0.83vw, 16px);
   overflow: hidden;
-  opacity: 0;
+    opacity: 0;
   transform: translateX(-100%);
   transition: all 0.4s ease;
   

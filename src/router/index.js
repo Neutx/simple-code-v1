@@ -21,25 +21,21 @@ const routes = [
   {
     path: '/login',
     name: 'Login',
-    component: LoginView,
-    meta: { requiresGuest: true }
+    component: LoginView
   },
   {
     path: '/register',
     name: 'Register',
-    component: RegisterView,
-    meta: { requiresGuest: true }
+    component: RegisterView
   },
   {
     path: '/initialize',
     name: 'Initialize',
-    component: InitializeView,
-    meta: { requiresAuth: true }
+    component: InitializeView
   },
   {
     path: '/dashboard',
     component: DashboardView,
-    meta: { requiresAuth: true },
     children: [
       {
         path: '',
@@ -80,26 +76,66 @@ const router = new VueRouter({
   routes
 })
 
-router.beforeEach(async (to, from, next) => {
+// Enhanced navigation guard that waits for auth initialization
+router.beforeEach((to, from, next) => {
   const isAuthenticated = store.getters['auth/isAuthenticated']
+  const isInitialized = store.getters['auth/initialized']
   
-  // Handle routes that require authentication
-  if (to.matched.some(record => record.meta.requiresAuth)) {
-    if (!isAuthenticated) {
-      next('/login')
-      return
-    }
+  // If auth is not initialized yet, wait for it
+  if (!isInitialized) {
+    const unwatch = store.watch(
+      () => store.getters['auth/initialized'],
+      (initialized) => {
+        if (initialized) {
+          unwatch()
+          // Re-run the navigation guard logic once initialized
+          const isAuth = store.getters['auth/isAuthenticated']
+          
+          // Allow navigation to login/register if not authenticated
+          if (!isAuth && (to.path === '/login' || to.path === '/register')) {
+            next()
+            return
+          }
+          
+          // Redirect to login if not authenticated and trying to access protected routes
+          if (!isAuth && to.path !== '/login' && to.path !== '/register') {
+            next('/login')
+            return
+          }
+          
+          // If authenticated and trying to go to login/register, redirect to dashboard
+          if (isAuth && (to.path === '/login' || to.path === '/register')) {
+            next('/dashboard')
+            return
+          }
+          
+          // Allow all other navigation
+          next()
+        }
+      }
+    )
+    return
   }
   
-  // Handle routes that require guest (not authenticated)
-  if (to.matched.some(record => record.meta.requiresGuest)) {
-    if (isAuthenticated) {
-      const isConnected = store.getters['device/isConnected']
-      next(isConnected ? '/dashboard/home' : '/initialize')
-      return
-    }
+  // Allow navigation to login/register if not authenticated
+  if (!isAuthenticated && (to.path === '/login' || to.path === '/register')) {
+    next()
+    return
   }
   
+  // Redirect to login if not authenticated and trying to access protected routes
+  if (!isAuthenticated && to.path !== '/login' && to.path !== '/register') {
+    next('/login')
+    return
+  }
+  
+  // If authenticated and trying to go to login/register, redirect to dashboard
+  if (isAuthenticated && (to.path === '/login' || to.path === '/register')) {
+    next('/dashboard')
+    return
+  }
+  
+  // Allow all other navigation
   next()
 })
 

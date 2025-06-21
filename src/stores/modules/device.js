@@ -59,7 +59,7 @@ const mutations = {
 
 const actions = {
   // Connect to device
-  async connectDevice({ commit, dispatch, rootState }) {
+  async connectDevice({ commit, rootState }) {
     commit('SET_CONNECTING', true)
     commit('CLEAR_ERROR')
     
@@ -99,12 +99,14 @@ const actions = {
           }
           // Save device connection to user's profile (non-blocking)
           if (rootState.auth.user) {
-            dispatch('saveDeviceConnection', {
-              userId: rootState.auth.user.uid,
-              deviceInfo: info
-            }).catch(error => {
-              console.error('Error saving device connection:', error)
-            })
+            console.log('Firestore operations temporarily disabled')
+            // TODO: Re-enable once Firestore is properly configured
+            // dispatch('saveDeviceConnection', {
+            //   userId: rootState.auth.user.uid,
+            //   deviceInfo: info
+            // }).catch(error => {
+            //   console.error('Error saving device connection:', error)
+            // })
           }
           
           return true

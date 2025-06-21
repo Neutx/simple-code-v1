@@ -1,14 +1,27 @@
 <template>
   <div id="app">
-    <router-view />
+    <div v-if="!authInitialized" class="auth-loading">
+      <LoadingSpinner />
+      <p>Initializing...</p>
+    </div>
+    <router-view v-else />
   </div>
 </template>
 
 <script>
-import { mapActions } from 'vuex'
+import { mapActions, mapGetters } from 'vuex'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 export default {
   name: 'App',
+  components: {
+    LoadingSpinner
+  },
+  computed: {
+    ...mapGetters('auth', {
+      authInitialized: 'initialized'
+    })
+  },
   async created() {
     this.loadLocalSettings()
   },
@@ -20,4 +33,19 @@ export default {
 
 <style>
 /* All styles are now imported via global.scss */
+
+.auth-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.auth-loading p {
+  margin-top: 1rem;
+  color: #666;
+  font-size: 14px;
+}
 </style>
