@@ -50,6 +50,22 @@ export const createRegisterComposable = (store, router, message) => {
     errors.confirmPassword = validateConfirmPassword(form.password, form.confirmPassword)
   }
 
+  const clearDisplayNameError = () => {
+    errors.displayName = ''
+  }
+
+  const clearEmailError = () => {
+    errors.email = ''
+  }
+
+  const clearPasswordError = () => {
+    errors.password = ''
+  }
+
+  const clearConfirmPasswordError = () => {
+    errors.confirmPassword = ''
+  }
+
   const handleRegister = async () => {
     if (!isFormValid()) return
     
@@ -90,6 +106,10 @@ export const createRegisterComposable = (store, router, message) => {
     handleEmailValidation,
     handlePasswordValidation,
     handleConfirmPasswordValidation,
+    clearDisplayNameError,
+    clearEmailError,
+    clearPasswordError,
+    clearConfirmPasswordError,
     handleRegister,
     handleGoogleRegister
   }

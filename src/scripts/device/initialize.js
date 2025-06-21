@@ -1,20 +1,36 @@
 export const createInitializeComposable = (store, router, message) => {
   let initializing = false
+  let connecting = false
+  let pairing = false
+  let showError = false
   let hasNavigated = false
 
   const goBack = () => {
     router.go(-1)
   }
 
-  const handleInitialize = async () => {
-    if (initializing || hasNavigated) return
+  const hideError = () => {
+    showError = false
+    // Auto-hide error after 5 seconds
+    setTimeout(() => {
+      showError = false
+    }, 5000)
+  }
+
+  const showConnectionError = () => {
+    showError = true
+    hideError()
+  }
+
+  const handleConnect = async () => {
+    if (connecting || hasNavigated) return
     
-    initializing = true
+    connecting = true
     
     try {
       // Check if WebHID is supported
       if (!navigator.hid) {
-        message.error('WebHID is not supported in this browser. Please use Chrome, Edge, or Opera.')
+        showConnectionError()
         return
       }
       
@@ -30,26 +46,70 @@ export const createInitializeComposable = (store, router, message) => {
       
       if (connected && !hasNavigated) {
         hasNavigated = true
-        message.success('Device connected successfully!')
         router.push('/dashboard/home')
       } else if (!connected) {
-        message.warning('No compatible device found. Please connect your mouse and try again.')
+        showConnectionError()
       }
     } catch (error) {
-      console.error('Initialization error:', error)
-      if (error.message === 'Connection timeout') {
-        message.error('Device connection timed out. Please try again.')
+      console.error('Connection error:', error)
+      showConnectionError()
+    } finally {
+      connecting = false
+    }
+  }
+
+  const handlePair = async () => {
+    if (pairing || hasNavigated) return
+    
+    pairing = true
+    
+    try {
+      // Check if WebHID is supported
+      if (!navigator.hid) {
+        showConnectionError()
+        return
+      }
+      
+      // Request device permissions
+      const devices = await navigator.hid.requestDevice({
+        filters: [
+          { vendorId: 0x1234 }, // Replace with actual vendor IDs
+          { vendorId: 0x5678 }
+        ]
+      })
+      
+      if (devices.length > 0) {
+        const connected = await store.dispatch('device/connectDevice', devices[0])
+        if (connected && !hasNavigated) {
+          hasNavigated = true
+          router.push('/dashboard/home')
+        }
       } else {
-        message.error('Failed to initialize device connection')
+        showConnectionError()
+      }
+    } catch (error) {
+      console.error('Pairing error:', error)
+      if (error.name !== 'NotAllowedError') {
+        showConnectionError()
       }
     } finally {
-      initializing = false
+      pairing = false
     }
+  }
+
+  const handleInitialize = async () => {
+    // Fallback method for backward compatibility
+    return handleConnect()
   }
 
   return {
     initializing: () => initializing,
+    connecting: () => connecting,
+    pairing: () => pairing,
+    showError: () => showError,
     goBack,
+    handleConnect,
+    handlePair,
     handleInitialize
   }
 } 

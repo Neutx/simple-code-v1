@@ -1,134 +1,151 @@
+/* Initialize Page - Exact UI Match */
 .initialize-container {
-  min-height: 100vh;
+  width: 100vw;
+  height: 100vh;
   position: relative;
+  background: #000000;
+  overflow: hidden;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.main-content {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+}
+
+/* Top right controls (initially hidden with opacity 0) */
+.top-controls {
+  position: absolute;
+  right: min(12vw, 234px);
+  top: min(7.7vh, 83px);
+  opacity: 0;
   display: flex;
-  flex-direction: column;
-  background: var(--bg-primary);
+  justify-content: flex-end;
+  align-items: flex-start;
+  gap: min(1.3vw, 10px);
+  width: min(12.5vw, 192px);
+}
+
+.control-button {
+  width: min(3.65vw, 56px);
+  height: min(5.18vh, 56px);
+  position: relative;
+  background: #27272A;
+  border-radius: min(1.04vw, 16px);
+  overflow: hidden;
+  cursor: pointer;
+  
+  &:hover {
+    background: #3F3F46;
+  }
+}
+
+.control-icon {
+  width: min(1.56vw, 24px);
+  height: min(2.22vh, 24px);
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   overflow: hidden;
 }
 
-.background-pattern {
+/* Main title section */
+.title-section {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: 
-    radial-gradient(circle at 20% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
-    radial-gradient(circle at 40% 40%, rgba(139, 92, 246, 0.05) 0%, transparent 50%);
-  z-index: -1;
-}
-
-.initialize-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
-  width: 100%;
-}
-
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 4rem;
-}
-
-.back-button {
-  color: var(--text-secondary);
-  font-size: 1.5rem;
-  padding: 0.5rem;
-  
-  &:hover {
-    color: var(--accent-primary);
-    background: var(--bg-glass);
-    border-radius: 8px;
-  }
-}
-
-.logo-container {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-}
-
-.logo {
-  height: 40px;
-  width: auto;
-}
-
-.spacer {
-  width: 48px; // Same width as back button to center logo
-}
-
-.welcome-section {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
+  left: 50%;
+  top: min(12.22vh, 132px);
+  transform: translateX(-50%);
+  width: min(74.32vw, 1427px);
+  height: min(17.78vh, 192px);
   text-align: center;
-  margin-bottom: 4rem;
-}
-
-.welcome-title {
-  font-size: 3.5rem;
-  font-weight: 300;
-  color: var(--text-primary);
-  margin-bottom: 1rem;
-  line-height: 1.2;
-  
-  @media (max-width: 768px) {
-    font-size: 2.5rem;
-  }
-  
-  @media (max-width: 480px) {
-    font-size: 2rem;
-  }
-}
-
-.gradient-text {
-  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.welcome-subtitle {
-  font-size: 1.25rem;
-  color: var(--text-secondary);
-  font-weight: 400;
-  
-  @media (max-width: 768px) {
-    font-size: 1.1rem;
-  }
-}
-
-.action-section {
   display: flex;
   justify-content: center;
-  margin-bottom: 3rem;
+  align-items: center;
 }
 
-.initialize-button {
-  padding: 1rem 3rem;
-  font-size: 1.1rem;
-  font-weight: 600;
-  border-radius: 16px;
+.main-title {
+  color: white;
+  font-size: min(5vw, 96px);
+  font-weight: 700;
+  font-family: 'DM Sans', sans-serif;
+  line-height: min(11.57vh, 125px);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: min(1.04vw, 20px);
+}
+
+.kreo-logo-wrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 min(0.52vw, 10px);
+}
+
+.kreo-logo {
+  width: min(12.19vw, 234px);
+  height: min(6.67vh, 72px);
+  object-fit: contain;
+}
+
+/* Subtitle section */
+.subtitle-section {
+  position: absolute;
+  left: 50%;
+  top: min(32.41vh, 350px);
+  transform: translateX(-50%);
+  text-align: center;
+}
+
+.subtitle {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: min(1.56vw, 30px);
+  font-weight: 400;
+  font-family: 'DM Sans', sans-serif;
+  line-height: min(3.70vh, 40px);
+  margin: 0;
+}
+
+/* Action buttons */
+.action-buttons {
+  position: absolute;
+  left: 50%;
+  top: min(54.91vh, 593px);
+  transform: translateX(-50%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: min(2.6vw, 50px);
+}
+
+.action-button {
+  padding: min(0.91vw, 14px) min(1.82vw, 28px);
+  background: #000000;
+  border-radius: min(1.56vw, 24px);
+  outline: 3px solid #A855F7;
+  outline-offset: -3px;
   border: none;
   color: white;
-  position: relative;
+  font-size: min(0.83vw, 16px);
+  font-weight: 500;
+  font-family: 'DM Sans', sans-serif;
+  text-align: center;
+  cursor: pointer;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: min(0.52vw, 8px);
   overflow: hidden;
-  transition: all 0.3s ease;
+  width: min(6.67vw, 128px);
+  transition: all 0.2s ease;
   
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 
-      0 20px 25px -5px rgba(139, 92, 246, 0.3),
-      0 10px 10px -5px rgba(139, 92, 246, 0.2);
+    background: rgba(168, 85, 247, 0.1);
+    transform: translateY(-1px);
   }
   
   &:active {
@@ -136,95 +153,156 @@
   }
   
   &:disabled {
-    opacity: 0.7;
+    opacity: 0.6;
     cursor: not-allowed;
     transform: none;
   }
 }
 
-.glow-effect {
-  position: relative;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: -2px;
-    left: -2px;
-    right: -2px;
-    bottom: -2px;
-    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
-    border-radius: 18px;
-    z-index: -1;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-  }
-  
-  &:hover::before {
-    opacity: 0.7;
-    animation: glow 2s ease-in-out infinite alternate;
-  }
-}
-
-@keyframes glow {
-  from {
-    box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
-  }
-  to {
-    box-shadow: 0 0 30px rgba(139, 92, 246, 0.8);
-  }
-}
-
-.browser-info {
+/* Browser support text */
+.browser-support {
+  position: absolute;
+  left: 50%;
+  top: min(84.07vh, 908px);
+  transform: translateX(-50%);
   text-align: center;
-  margin-top: auto;
-  padding-bottom: 2rem;
 }
 
 .browser-text {
-  color: var(--text-tertiary);
-  font-size: 0.9rem;
+  color: white;
+  font-size: min(1.04vw, 20px);
+  font-weight: 400;
+  font-family: 'DM Sans', sans-serif;
+  line-height: 1.6;
   margin: 0;
 }
 
-// Responsive design
+/* Error notification */
+.error-notification {
+  position: absolute;
+  left: min(-21.77vw, -418px);
+  top: min(80.65vh, 871px);
+  width: min(20vw, 384px);
+  padding: min(0.83vw, 16px);
+  background: #EF4444;
+  border-radius: min(0.625vw, 12px);
+  display: inline-flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: min(0.83vw, 16px);
+  overflow: hidden;
+  opacity: 0;
+  transform: translateX(-100%);
+  transition: all 0.4s ease;
+  
+  &.show {
+    opacity: 1;
+    transform: translateX(0);
+    left: min(2.5vw, 48px);
+  }
+}
+
+.error-icon {
+  width: min(1.25vw, 24px);
+  height: min(2.22vh, 24px);
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+  margin-top: min(0.1vh, 2px);
+}
+
+.error-content {
+  flex: 1;
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: min(0.37vh, 4px);
+}
+
+.error-title {
+  color: white;
+  font-size: min(0.83vw, 16px);
+  font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+  line-height: normal;
+  margin: 0;
+}
+
+.error-description {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: min(0.73vw, 14px);
+  font-weight: 400;
+  font-family: 'DM Sans', sans-serif;
+  line-height: 1.2;
+  margin: 0;
+}
+
+/* Responsive adjustments for smaller screens */
 @media (max-width: 768px) {
-  .initialize-content {
-    padding: 1.5rem;
+  .main-title {
+    font-size: min(8vw, 48px);
+    line-height: min(15vh, 60px);
+    flex-direction: column;
+    gap: min(2vw, 15px);
   }
   
-  .header {
-    margin-bottom: 3rem;
+  .kreo-logo {
+    width: min(20vw, 150px);
+    height: min(8vh, 45px);
   }
   
-  .welcome-section {
-    margin-bottom: 3rem;
+  .subtitle {
+    font-size: min(3vw, 18px);
+    line-height: min(5vh, 24px);
   }
   
-  .initialize-button {
-    padding: 0.875rem 2.5rem;
-    font-size: 1rem;
+  .action-buttons {
+    flex-direction: column;
+    gap: min(3vh, 20px);
+  }
+  
+  .action-button {
+    min-width: min(40vw, 200px);
+    padding: min(2vw, 12px) min(4vw, 24px);
+    font-size: min(2.5vw, 14px);
+  }
+  
+  .browser-text {
+    font-size: min(2.5vw, 14px);
+  }
+  
+  .error-notification {
+    width: min(85vw, 320px);
+    left: min(2.5vw, 20px);
+    
+    &.show {
+      left: min(2.5vw, 20px);
+    }
   }
 }
 
 @media (max-width: 480px) {
-  .initialize-content {
-    padding: 1rem;
+  .main-title {
+    font-size: min(10vw, 36px);
+    line-height: min(18vh, 45px);
   }
   
-  .header {
-    margin-bottom: 2rem;
+  .kreo-logo {
+    width: min(25vw, 120px);
+    height: min(6vh, 36px);
   }
   
-  .welcome-section {
-    margin-bottom: 2rem;
+  .subtitle {
+    font-size: min(4vw, 16px);
   }
   
-  .initialize-button {
-    padding: 0.75rem 2rem;
-    font-size: 0.95rem;
+  .action-button {
+    min-width: min(50vw, 180px);
+    font-size: min(3vw, 12px);
   }
   
-  .browser-info {
-    padding-bottom: 1rem;
+  .browser-text {
+    font-size: min(3vw, 12px);
   }
 } 

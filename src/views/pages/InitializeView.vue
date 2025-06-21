@@ -1,52 +1,72 @@
 <template>
   <div class="initialize-container">
-    <!-- Background -->
-    <div class="background-pattern"></div>
-    
     <!-- Main content -->
-    <div class="initialize-content">
-      <!-- Header with back button -->
-      <div class="header">
-        <el-button 
-          @click="initializeLogic.goBack" 
-          type="text" 
-          class="back-button"
-        >
-          <IconifyIcon icon="ion:chevron-back" />
-        </el-button>
-        
-        <!-- Kreo Logo -->
-        <div class="logo-container">
-          <img src="/logos/kreo-navbar.svg" alt="Kreo" class="logo" />
+    <div class="main-content">
+      <!-- Top right controls (hidden initially) -->
+      <div class="top-controls">
+        <div class="control-button">
+          <div class="control-icon">
+            <!-- Battery icon placeholder -->
+          </div>
         </div>
-        
-        <div class="spacer"></div>
+        <div class="control-button">
+          <div class="control-icon">
+            <!-- Settings icon placeholder -->
+          </div>
+        </div>
+        <div class="control-button">
+          <div class="control-icon">
+            <!-- Menu icon placeholder -->
+          </div>
+        </div>
       </div>
-      
-      <!-- Welcome Section -->
-      <div class="welcome-section">
-        <h1 class="welcome-title">
-          Welcome to <span class="gradient-text">kreo.</span> hub
+
+      <!-- Main title with logo -->
+      <div class="title-section">
+        <h1 class="main-title">
+          Welcome to <span class="kreo-logo-wrapper"><img src="/img/kreo_logo_purple.svg" alt="kreo" class="kreo-logo" /></span> hub
         </h1>
-        <p class="welcome-subtitle">Your personal command center</p>
       </div>
-      
-      <!-- Initialize Button -->
-      <div class="action-section">
-        <el-button
-          type="primary"
-          size="large"
-          :loading="initializeLogic.initializing()"
-          @click="initializeLogic.handleInitialize"
-          class="initialize-button gradient-bg glow-effect"
+
+      <!-- Subtitle -->
+      <div class="subtitle-section">
+        <p class="subtitle">Your personal command center</p>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="action-buttons">
+        <button 
+          class="action-button"
+          @click="initializeLogic.handleConnect"
+          :disabled="initializeLogic.connecting()"
         >
-          {{ initializeLogic.initializing() ? 'Initializing...' : 'Initialize' }}
-        </el-button>
+          {{ initializeLogic.connecting() ? 'Connecting...' : 'Connect' }}
+        </button>
+        <button 
+          class="action-button"
+          @click="initializeLogic.handlePair"
+          :disabled="initializeLogic.pairing()"
+        >
+          {{ initializeLogic.pairing() ? 'Pairing...' : 'Pair' }}
+        </button>
       </div>
-      
-      <!-- Browser Support Info -->
-      <div class="browser-info">
+
+      <!-- Browser support info -->
+      <div class="browser-support">
         <p class="browser-text">Currently supports Google Chrome, MS Edge and Opera</p>
+      </div>
+
+      <!-- Error notification -->
+      <div class="error-notification" :class="{ 'show': initializeLogic.showError() }">
+        <div class="error-icon">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M10 0C4.48 0 0 4.48 0 10C0 15.52 4.48 20 10 20C15.52 20 20 15.52 20 10C20 4.48 15.52 0 10 0ZM11 15H9V13H11V15ZM11 11H9V5H11V11Z" fill="white"/>
+          </svg>
+        </div>
+        <div class="error-content">
+          <div class="error-title">Connection error</div>
+          <div class="error-description">The device you tried to connect, is not supported by us currently. Please retry with a different device</div>
+        </div>
       </div>
     </div>
   </div>
