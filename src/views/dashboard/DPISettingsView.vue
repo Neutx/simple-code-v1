@@ -71,7 +71,6 @@ export default {
     getDeviceNameFromCidMid(cid, mid) {
       // Device identification logic
       console.log('CID:', cid, 'MID:', mid)
-      return 'Ikarus'
     }
   }
 }

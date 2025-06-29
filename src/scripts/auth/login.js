@@ -1,114 +1,126 @@
-import { validateEmail, validatePassword } from './validation'
+import { validateEmail, validatePassword } from "./validation";
 
 export const createLoginComposable = (store, router, message) => {
   const form = {
-    email: '',
-    password: '',
-    rememberMe: false
-  }
+    email: "",
+    password: "",
+    rememberMe: false,
+  };
 
   const errors = {
-    email: '',
-    password: ''
-  }
+    email: "",
+    password: "",
+  };
 
-  let googleLoading = false
-  let emailErrorTimeout = null
-  let passwordErrorTimeout = null
+  let googleLoading = false;
+  let emailErrorTimeout = null;
+  let passwordErrorTimeout = null;
 
   const isFormValid = () => {
-    return form.email && 
-           form.password && 
-           !errors.email && 
-           !errors.password
-  }
+    return form.email && form.password && !errors.email && !errors.password;
+  };
 
   const clearEmailError = () => {
     if (emailErrorTimeout) {
-      clearTimeout(emailErrorTimeout)
-      emailErrorTimeout = null
+      clearTimeout(emailErrorTimeout);
+      emailErrorTimeout = null;
     }
-    errors.email = ''
-  }
+    errors.email = "";
+  };
 
   const clearPasswordError = () => {
     if (passwordErrorTimeout) {
-      clearTimeout(passwordErrorTimeout)
-      passwordErrorTimeout = null
+      clearTimeout(passwordErrorTimeout);
+      passwordErrorTimeout = null;
     }
-    errors.password = ''
-  }
+    errors.password = "";
+  };
 
   const handleEmailValidation = () => {
-    clearEmailError()
-    const validationError = validateEmail(form.email)
-    
+    clearEmailError();
+    const validationError = validateEmail(form.email);
+
     if (validationError) {
-      errors.email = validationError
+      errors.email = validationError;
       // Clear error after 3 seconds
       emailErrorTimeout = setTimeout(() => {
-        errors.email = ''
-        emailErrorTimeout = null
-      }, 3000)
+        errors.email = "";
+        emailErrorTimeout = null;
+      }, 3000);
     }
-  }
+  };
 
   const handlePasswordValidation = () => {
-    clearPasswordError()
-    const validationError = validatePassword(form.password)
-    
+    clearPasswordError();
+    const validationError = validatePassword(form.password);
+
     if (validationError) {
-      errors.password = validationError
+      errors.password = validationError;
       // Clear error after 3 seconds
       passwordErrorTimeout = setTimeout(() => {
-        errors.password = ''
-        passwordErrorTimeout = null
-      }, 3000)
+        errors.password = "";
+        passwordErrorTimeout = null;
+      }, 3000);
     }
-  }
+  };
 
   const handleLogin = async () => {
     // Validate both fields before submission
-    handleEmailValidation()
-    handlePasswordValidation()
-    
-    if (!isFormValid()) return
-    
+    handleEmailValidation();
+    handlePasswordValidation();
+
+    if (!isFormValid()) return;
+
     try {
-      await store.dispatch('auth/login', {
+      // Check for dummy login credentials (development only)
+      if (form.email === "test@test.com" && form.password === "test@test.com") {
+        // Simulate dummy user login without Firebase
+        await store.dispatch("auth/dummyLogin", {
+          email: form.email,
+          uid: "dummy-user-id",
+          displayName: "Test User",
+        });
+
+        message.success("Login successful! (Development Mode)");
+        router.push("/initialize");
+        return;
+      }
+
+      // Regular Firebase authentication
+      await store.dispatch("auth/login", {
         email: form.email,
-        password: form.password
-      })
-      
-      message.success('Login successful!')
-      
+        password: form.password,
+      });
+
+      message.success("Login successful!");
+
       // Always redirect to initialize page after login
-      router.push('/initialize')
+      router.push("/initialize");
     } catch (error) {
-      message.error(error.message || 'Login failed')
+      message.error(error.message || "Login failed");
     }
-  }
+  };
 
   const handleGoogleLogin = async () => {
-    googleLoading = true
-    
+    googleLoading = true;
+
     try {
-      await store.dispatch('auth/loginWithGoogle')
-      message.success('Login successful!')
-      
-      // Always redirect to initialize page after login  
-      router.push('/initialize')
+      await store.dispatch("auth/loginWithGoogle");
+      message.success("Login successful!");
+
+      // Always redirect to initialize page after login
+      router.push("/initialize");
     } catch (error) {
-      message.error(error.message || 'Google login failed')
+      message.error(error.message || "Google login failed");
     } finally {
-      googleLoading = false
+      googleLoading = false;
     }
-  }
+  };
 
   const initializeRememberMe = () => {
     // Simple placeholder function to prevent errors
     // Remember me functionality has been simplified
-  }
+  };
 
   return {
     form,
@@ -121,6 +133,6 @@ export const createLoginComposable = (store, router, message) => {
     clearPasswordError,
     handleLogin,
     handleGoogleLogin,
-    initializeRememberMe
-  }
-} 
+    initializeRememberMe,
+  };
+};
