@@ -62,12 +62,25 @@
           <!-- Sleep timer -->
           <div class="setting-row">
             <span class="setting-label">Sleep timer</span>
-            <div class="sleep-display" @click="cycleSleepTimer">
-              {{ sleepTimer }} mins
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <div class="dropdown-container" @click="toggleSleepDropdown">
+              <span class="dropdown-value">{{ sleepTimer }} mins</span>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" class="dropdown-icon" :class="{ rotated: sleepDropdownOpen }">
                 <path d="M7 10L12 15L17 10" stroke="#D4D4D8" stroke-width="1.5" />
               </svg>
             </div>
+            <!-- Dropdown Options -->
+            <transition name="sleep-dropdown">
+              <div v-if="sleepDropdownOpen" class="sleep-dropdown-options">
+                <div 
+                  v-for="(minutes, index) in sleepTimerSteps" 
+                  :key="minutes"
+                  class="sleep-dropdown-option"
+                  @click.stop="selectSleepTimer(index)"
+                >
+                  {{ minutes }} mins
+                </div>
+              </div>
+            </transition>
           </div>
         </div>
 
@@ -156,6 +169,7 @@ export default {
       // Sleep timer value in minutes
       sleepTimerSteps: [1, 2, 5, 10, 15, 30],
       sleepTimerIndex: 2, // default 5 mins
+      sleepDropdownOpen: false,
 
       // Polling rates (Hz)
       pollingRates: [125, 500, 1000, 2000, 4000],
@@ -475,9 +489,17 @@ export default {
       }
     },
     
-    cycleSleepTimer() {
-      this.sleepTimerIndex = (this.sleepTimerIndex + 1) % this.sleepTimerSteps.length
+    toggleSleepDropdown() {
+      this.sleepDropdownOpen = !this.sleepDropdownOpen
+    },
+    
+    selectSleepTimer(index) {
+      this.sleepTimerIndex = index
+      this.sleepDropdownOpen = false
       // Note: Sleep timer functionality would need additional HIDHandle method
+      if (this.isDeviceConnected) {
+        console.log(`🕐 Sleep timer set to ${this.sleepTimer} minutes`)
+      }
     }
   }
 }
@@ -600,6 +622,7 @@ export default {
   justify-content: space-between;
   margin-bottom: 24px;
   padding: 6px 0;
+  position: relative;
 }
 
 /* Toggle switch */
@@ -649,15 +672,65 @@ input:checked + .slider:before {
   background-color: white;
 }
 
-/* Sleep timer display */
-.sleep-display {
+/* Sleep timer dropdown */
+.dropdown-container {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #a278fd;
-  font-size: 20px;
-  font-family: 'DM Sans', sans-serif;
+  padding: 8px;
+  border-radius: 10px;
   cursor: pointer;
+  position: relative;
+}
+
+.dropdown-value {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 20px;
+  color: #a278fd;
+}
+
+.dropdown-icon {
+  transition: transform 0.3s ease;
+
+  &.rotated {
+    transform: rotate(180deg);
+  }
+}
+
+.sleep-dropdown-options {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  width: 120px;
+  background: #262626;
+  border-radius: 16px;
+  z-index: 10;
+  overflow: hidden;
+  margin-bottom: 4px;
+  display: flex;
+  flex-direction: column;
+  transform-origin: bottom center;
+  box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.sleep-dropdown-option {
+  height: 56px;
+  background: #262626;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  color: white;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  position: relative;
+  overflow: hidden;
+
+  &:hover {
+    background: #404040;
+  }
 }
 
 /* Right column */
@@ -768,29 +841,32 @@ input:checked + .slider:before {
 }
 
 .reset-btn {
+  width: 320px;
+  height: 48px;
+  background: #27272a;
+  border-radius: 10px;
+  border: none;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 0;
-  width: 100%;
   justify-content: center;
-  border-radius: 10px;
-  background: #27272a;
-  color: white;
-  font-size: 14px;
-  font-weight: 600;
-  font-family: 'DM Sans', sans-serif;
+  gap: 12px;
   cursor: pointer;
   transition: background 0.2s ease;
+  margin-left: 7px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
 
   &:hover {
     background: #3f3f46;
   }
+}
 
-  .reset-icon {
-    width: 18px;
-    height: 18px;
-  }
+.reset-icon {
+  width: 18px;
+  height: 18px;
+  filter: brightness(0) invert(1);
 }
 
 /* ===== New toggle switch (Tailwind-like design) ===== */
@@ -842,5 +918,32 @@ input:checked + .slider:before {
   &.disabled.checked .toggle-knob {
     background: #888;
   }
+}
+
+// Sleep timer dropdown animation
+.sleep-dropdown-enter-active {
+  transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transform-origin: bottom center;
+}
+
+.sleep-dropdown-leave-active {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.6, 1);
+  transform-origin: bottom center;
+}
+
+.sleep-dropdown-enter-from {
+  opacity: 0;
+  transform: scaleY(0.7) translateY(8px);
+}
+
+.sleep-dropdown-leave-to {
+  opacity: 0;
+  transform: scaleY(0.8) translateY(4px);
+}
+
+.sleep-dropdown-enter-to,
+.sleep-dropdown-leave-from {
+  opacity: 1;
+  transform: scaleY(1) translateY(0);
 }
 </style> 
