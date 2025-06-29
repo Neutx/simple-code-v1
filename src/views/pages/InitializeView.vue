@@ -20,7 +20,7 @@
           </div>
         </div>
       </div>
-
+      
       <!-- Main title with logo -->
       <div class="title-section">
         <h1 class="main-title">
@@ -32,7 +32,7 @@
       <div class="subtitle-section">
         <p class="subtitle">Your personal command center</p>
       </div>
-
+      
       <!-- Action buttons -->
       <div class="action-buttons">
         <button 
@@ -50,7 +50,7 @@
           {{ initializeLogic.pairing() ? 'Pairing...' : 'Pair' }}
         </button>
       </div>
-
+      
       <!-- Browser support info -->
       <div class="browser-support">
         <p class="browser-text">Currently supports Google Chrome, MS Edge and Opera</p>

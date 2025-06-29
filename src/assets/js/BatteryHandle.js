@@ -1,3 +1,5 @@
+import HIDHandle from "./HIDHandle";
+
 var isCharging = false;
 var isBatVol = false;
 var lowBattery = false;
@@ -51,7 +53,7 @@ function batteryHandleInit(addr, battery) {
   }
   console.log("current time:",currentTime,displayLevel,lastLevel,factLevel,sec);
   displayLevel = calculationBattery(lastLevel,factLevel,sec);
-  //console.log("current time:",currentTime,displayLevel,factLevel);
+  console.log("current time:",currentTime,displayLevel,factLevel);
   if(level2TimerID == null) {
     level2TimerID = setInterval(level2TimerTick,60000);
   }
@@ -143,7 +145,7 @@ function setDisplayLevel(battery) {
     if(battery.level == 0)
       displayLevel = 0;
 
-    console.log("charging false",displayLevel,factLevel);
+    // console.log("charging false",displayLevel,factLevel);
     if(displayLevel < 15) {
 
     }
@@ -176,9 +178,10 @@ function setDisplayLevel(battery) {
     if(battery.level == 100) {
       if(fullBatteryCount < 10) {
         fullBatteryCount ++;
+        HIDHandle.Get_Device_Battery();
       }
 
-      if(fullBatteryCount == 8) {
+      if(fullBatteryCount >= 8) {
         displayLevel = 100;
       }
     }
@@ -235,7 +238,7 @@ function voltageToLevel(voltage,charging) {
     }
   }
   level = Math.round(level);
-  console.log("voltageToLevel:",voltage,level);
+  // console.log("voltageToLevel:",voltage,level);
   return level;
 }
 
@@ -273,6 +276,7 @@ function calculationBattery(lastLevel, factLevel, sec) {
     level = lastLevel;    
   }
 
+  level = Math.round(level);
   return level;
 }
 
