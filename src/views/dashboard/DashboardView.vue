@@ -66,6 +66,18 @@
       <!-- Sensor Settings Panel (only visible in sensor mode) -->
       <SensorSettingsPanel v-if="activeTab === 'sensor'" />
       
+      <!-- Key Remapping Mouse Display (only visible in keys mode) -->
+      <div class="key-remapping-mouse-section" v-if="activeTab === 'keys'">
+        <KeyRemappingMouseDisplay 
+          :device-model="deviceModel" 
+          :mouse-image-src="mouseImageSrc"
+          @key-selected="handleKeySelected"
+        />
+      </div>
+      
+      <!-- Key Remapping Panel (only visible in keys mode) -->
+      <KeyRemappingPanel v-if="activeTab === 'keys'" @key-mapping-updated="handleKeyMappingUpdate" />
+      
       <!-- RGB Mouse Display -->
       <div class="rgb-mouse-section" v-if="activeTab === 'rgb'">
         <SensorMouseDisplay 
@@ -89,7 +101,7 @@
     </div>
 
     <!-- Status Bar -->
-    <div class="dashboard-footer" v-if="!isDPIMode && activeTab !== 'rgb' && activeTab !== 'sensor'">
+    <div class="dashboard-footer" v-if="!isDPIMode && activeTab !== 'rgb' && activeTab !== 'sensor' && activeTab !== 'keys'">
       <StatusBar 
         :device-model="deviceModel"
         :current-d-p-i="currentDPI"
@@ -117,6 +129,8 @@ import StatusBar from '@/components/dashboard/StatusBar.vue'
 import SensorSettingsPanel from '@/components/dashboard/SensorSettingsPanel.vue'
 import SensorMouseDisplay from '@/components/dashboard/SensorMouseDisplay.vue'
 import RGBSettingsPanel from '@/components/dashboard/RGBSettingsPanel.vue'
+import KeyRemappingPanel from '@/components/dashboard/KeyRemappingPanel.vue'
+import KeyRemappingMouseDisplay from '@/components/dashboard/KeyRemappingMouseDisplay.vue'
 
 export default {
   name: 'DashboardView',
@@ -132,6 +146,8 @@ export default {
     StatusBar,
     SensorSettingsPanel,
     SensorMouseDisplay,
+    KeyRemappingPanel,
+    KeyRemappingMouseDisplay,
     RGBSettingsPanel
   },
   data() {
@@ -309,6 +325,16 @@ export default {
       this.$message.info('Profile feature coming soon!')
     },
     
+    handleKeySelected(key) {
+      console.log('Key selected in dashboard:', key)
+      // Handle key selection logic here
+    },
+    
+    handleKeyMappingUpdate(mapping) {
+      console.log('Key mapping updated in dashboard:', mapping)
+      // Handle key mapping update logic here
+    },
+    
     getDeviceNameFromCidMid(cid, mid) {
       console.log("🔍 Device identification:", { cid, mid });
       
@@ -448,6 +474,24 @@ export default {
   z-index: 1;
 }
 
+.key-remapping-mouse-section {
+  position: absolute;
+  top: 55%;
+  right: 15vw;
+  transform: translateY(-50%);
+  z-index: 1;
+  transition: all 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.key-remapping-mouse-section {
+  position: absolute;
+  top: 55%;
+  right: 15vw;
+  transform: translateY(-50%);
+  z-index: 1;
+  transition: all 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
 // Responsive breakpoints
 @media (max-width: 1200px) {
   .dashboard-header {
@@ -456,6 +500,11 @@ export default {
   }
   .header-main {
     gap: 1.5vw;
+  }
+  
+  .key-remapping-mouse-section {
+    right: 12vw;
+    top: 52%;
   }
 }
 
@@ -475,11 +524,21 @@ export default {
     display: flex;
     justify-content: space-between;
   }
+  
+  .key-remapping-mouse-section {
+    right: 8vw;
+    top: 50%;
+  }
 }
 
 @media (max-width: 768px) {
   .dashboard-header {
     padding: 2vh 3vw;
+  }
+  
+  .key-remapping-mouse-section {
+    right: 5vw;
+    top: 48%;
   }
 }
 </style> 

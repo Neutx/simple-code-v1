@@ -42,11 +42,7 @@
           <div class="current-color-preview">
             <div class="color-preview-square" :style="{ backgroundColor: currentColor }"></div>
           </div>
-          <div class="eyedropper-button">
-            <div class="eyedropper-icon">
-              <div class="eyedropper-inner"></div>
-            </div>
-          </div>
+
           <div class="hex-input-container">
             <span class="hex-prefix">#</span>
             <input 
@@ -539,31 +535,7 @@ export default {
   transition: background-color 0.1s ease;
 }
 
-.eyedropper-button {
-  width: 64px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
 
-.eyedropper-icon {
-  flex: 1;
-  height: 32px;
-  padding: 6px;
-  background: #404040;
-  border-radius: 4px;
-  box-shadow: 0px 1px 2px 0px rgba(31, 41, 55, 0.08);
-  border: 1px solid #555;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.eyedropper-inner {
-  width: 16px;
-  height: 16px;
-  background: #d1d5db;
-}
 
 .hex-input-container {
   flex: 1;
