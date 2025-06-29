@@ -75,12 +75,15 @@
 <script>
 import { mapGetters } from 'vuex'
 import { createInitializeComposable } from '@/scripts/device/initialize'
+import HIDHandle from '@/assets/js/HIDHandle'
 
 export default {
   name: 'InitializeView',
   data() {
     return {
-      initializeLogic: null
+      initializeLogic: null,
+      deviceInfo: HIDHandle.deviceInfo,
+      loggingInterval: null
     }
   },
   computed: {
@@ -92,8 +95,155 @@ export default {
   },
   
   mounted() {
+    // Initialize WebHID support check
+    console.log("🔧 WebHID Support:", 'hid' in navigator);
+    console.log("🔧 Device Info:", HIDHandle.deviceInfo);
+    console.log("🔧 Connection State:", HIDHandle.deviceInfo.connectState);
+    
+    // Set up real-time device monitoring as per .cursorrules
+    this.setupDeviceLogging()
+    
+    // Listen for device connection events
+    this.$bus.$on("deviceConnect", (connected) => {
+      if (connected) {
+        console.log("✅ Device connected - Real-time monitoring active");
+        this.startRealTimeLogging()
+      }
+    });
+
+    // Listen for UI updates
+    this.$bus.$on("updateMouseUI", (mouseCfg) => {
+      console.log("🎮 Mouse settings updated:", mouseCfg);
+    });
+    
     if (this.isConnected) {
       this.$router.replace('/dashboard/home')
+    }
+  },
+  
+  beforeDestroy() {
+    // Clean up intervals and event listeners
+    if (this.loggingInterval) {
+      clearInterval(this.loggingInterval)
+    }
+    this.$bus.$off("deviceConnect")
+    this.$bus.$off("updateMouseUI")
+  },
+  
+  watch: {
+    // Monitor all device changes as specified in .cursorrules
+    "deviceInfo": {
+      handler(newInfo) {
+        console.log("🔄 Device Update:", {
+          connected: newInfo.connectState === 2,
+          battery: newInfo.battery.level + "%",
+          dpi: newInfo.mouseCfg.dpis[newInfo.mouseCfg.currentDpi]?.value,
+          reportRate: newInfo.mouseCfg.reportRate + "Hz",
+          timestamp: new Date().toISOString()
+        });
+        
+        // Start real-time logging when device becomes connected
+        if (newInfo.connectState === 2 && newInfo.deviceOpen) {
+          console.log("✅ Device connected - Starting real-time monitoring");
+          this.startRealTimeLogging()
+        }
+      },
+      deep: true
+    },
+    
+    // Watch for device connection changes from store
+    isConnected(newVal) {
+      if (newVal) {
+        console.log("✅ Device connected via store - Real-time monitoring active");
+        this.startRealTimeLogging()
+      }
+    }
+  },
+  
+  methods: {
+    setupDeviceLogging() {
+      // Initial device state logging
+      console.log("🚀 Initialize Page - Device Logger Started");
+      console.log("📱 Initial Device State:", {
+        deviceOpen: HIDHandle.deviceInfo.deviceOpen,
+        connectState: HIDHandle.deviceInfo.connectState,
+        online: HIDHandle.deviceInfo.online,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Log initial HIDHandle state for debugging
+      console.log("🔧 HIDHandle Initial State:", {
+        deviceInfo: HIDHandle.deviceInfo,
+        connectState: HIDHandle.deviceInfo.connectState,
+        battery: HIDHandle.deviceInfo.battery,
+        mouseCfg: HIDHandle.deviceInfo.mouseCfg,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Log WebHID API availability
+      console.log("🌐 WebHID API Check:", {
+        supported: 'hid' in navigator,
+        userAgent: navigator.userAgent,
+        timestamp: new Date().toISOString()
+      });
+    },
+    
+    startRealTimeLogging() {
+      // Clear any existing interval
+      if (this.loggingInterval) {
+        clearInterval(this.loggingInterval)
+      }
+      
+      // Set up comprehensive logging every second as per .cursorrules
+      this.loggingInterval = setInterval(() => {
+        if (HIDHandle.deviceInfo.deviceOpen) {
+          const status = {
+            timestamp: new Date().toISOString(),
+            model: "Ikarus", // From your status bar
+            dpi: HIDHandle.deviceInfo.mouseCfg.dpis[HIDHandle.deviceInfo.mouseCfg.currentDpi]?.value || 1600,
+            pollingRate: HIDHandle.deviceInfo.mouseCfg.reportRate + "Hz",
+            battery: HIDHandle.deviceInfo.battery.level + "%",
+            lod: HIDHandle.deviceInfo.mouseCfg.sensor.lod + "MM",
+            motionSync: HIDHandle.deviceInfo.mouseCfg.sensor.motionSync ? "ON" : "OFF",
+            online: HIDHandle.deviceInfo.online ? "CONNECTED" : "OFFLINE",
+            connectState: HIDHandle.deviceInfo.connectState,
+            deviceInfo: {
+              cid: HIDHandle.deviceInfo.info.cid,
+              mid: HIDHandle.deviceInfo.info.mid,
+              type: HIDHandle.deviceInfo.info.type
+            },
+            isWired: HIDHandle.deviceInfo.isWired,
+            maxReportRate: HIDHandle.deviceInfo.maxReportRate
+          };
+          
+          console.log("📊 REAL-TIME STATUS:", status);
+          
+          // Additional detailed logging for battery
+          if (HIDHandle.deviceInfo.battery) {
+            console.log("🔋 Battery Details:", {
+              level: HIDHandle.deviceInfo.battery.level,
+              charging: HIDHandle.deviceInfo.battery.charging,
+              voltage: HIDHandle.deviceInfo.battery.voltage,
+              timestamp: new Date().toISOString()
+            });
+          }
+          
+          // Additional detailed logging for mouse configuration
+          if (HIDHandle.deviceInfo.mouseCfg) {
+            console.log("🖱️ Mouse Config:", {
+              currentDpi: HIDHandle.deviceInfo.mouseCfg.currentDpi,
+              maxDpiStage: HIDHandle.deviceInfo.mouseCfg.maxDpiStage,
+              dpis: HIDHandle.deviceInfo.mouseCfg.dpis,
+              sensor: HIDHandle.deviceInfo.mouseCfg.sensor,
+              lightEffect: HIDHandle.deviceInfo.mouseCfg.lightEffect,
+              keysCount: HIDHandle.deviceInfo.mouseCfg.keysCount,
+              timestamp: new Date().toISOString()
+            });
+          }
+        }
+      }, 1000);
+      
+      console.log("🔄 Real-time logging started - Updates every 1 second");
     }
   }
 }

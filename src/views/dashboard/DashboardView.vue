@@ -25,8 +25,8 @@
 
     <!-- Main Content Area -->
     <div class="dashboard-main">
-      <!-- Mouse Visualization - Regular Mode -->
-      <div class="mouse-section" v-if="!isDPIMode">
+      <!-- Mouse Visualization - Regular Home -->
+      <div class="mouse-section" v-if="activeTab === 'home'">
         <MouseVisualization :src="mouseImageSrc" />
       </div>
       
@@ -50,6 +50,20 @@
       <!-- DPI Settings Panel (only visible in DPI mode) -->
       <DPISettingsPanel v-if="activeTab === 'dpi'" />
       
+      <!-- Sensor Mouse Display -->
+      <div class="sensor-mouse-section" v-if="activeTab === 'sensor'">
+        <SensorMouseDisplay 
+          :device-model="deviceModel" 
+          :mouse-image-src="mouseImageSrc"
+          :current-d-p-i="currentDPI"
+          :polling-rate="pollingRate"
+          :battery-level="batteryLevel"
+        />
+      </div>
+      
+      <!-- Sensor Settings Panel (only visible in sensor mode) -->
+      <SensorSettingsPanel v-if="activeTab === 'sensor'" />
+      
       <!-- Router View for Tab Content -->
       <div class="content-overlay">
         <!-- <router-view /> -->
@@ -57,7 +71,7 @@
     </div>
 
     <!-- Status Bar -->
-    <div class="dashboard-footer" v-if="!isDPIMode">
+    <div class="dashboard-footer" v-if="!isDPIMode && activeTab !== 'sensor'">
       <StatusBar 
         :device-model="deviceModel"
         :current-d-p-i="currentDPI"
@@ -72,6 +86,7 @@
 
 <script>
 import { mapGetters } from 'vuex'
+import HIDHandle from '@/assets/js/HIDHandle'
 import NavigationTabs from '@/components/dashboard/NavigationTabs.vue'
 import MouseVisualization from '@/components/dashboard/MouseVisualization.vue'
 import AnimatedMouseVisualization from '@/components/dashboard/AnimatedMouseVisualization.vue'
@@ -81,6 +96,8 @@ import ActionButtons from '@/components/dashboard/ActionButtons.vue'
 import BackButton from '@/components/dashboard/BackButton.vue'
 import KreoLogo from '@/components/dashboard/KreoLogo.vue'
 import StatusBar from '@/components/dashboard/StatusBar.vue'
+import SensorSettingsPanel from '@/components/dashboard/SensorSettingsPanel.vue'
+import SensorMouseDisplay from '@/components/dashboard/SensorMouseDisplay.vue'
 
 export default {
   name: 'DashboardView',
@@ -93,55 +110,79 @@ export default {
     ActionButtons,
     BackButton,
     KreoLogo,
-    StatusBar
+    StatusBar,
+    SensorSettingsPanel,
+    SensorMouseDisplay
   },
   data() {
     return {
       activeTab: 'home',
-      activeDPI: 1 // Default to second profile (1200 DPI)
+      activeDPI: 1, // Default to second profile (1200 DPI)
+      deviceInfo: HIDHandle.deviceInfo, // Reactive reference to HIDHandle
+      realTimeTimer: null,
+      // Track previous values to detect changes
+      lastLoggedState: {
+        battery: null,
+        dpi: null,
+        pollingRate: null,
+        lod: null,
+        motionSync: null,
+        connectState: null
+      },
+      hasLoggedInitialConnection: false
     }
   },
   computed: {
     ...mapGetters('auth', ['currentUser']),
-    ...mapGetters('device', ['isConnected', 'deviceInfo', 'battery']),
-    ...mapGetters('settings', ['dpiSettings', 'pollingRate', 'rgbSettings', 'sensorSettings']),
+    ...mapGetters('device', ['isConnected']),
+    ...mapGetters('settings', ['dpiSettings', 'rgbSettings', 'sensorSettings']),
     
     isDPIMode() {
       return this.activeTab === 'dpi'
     },
     
     deviceModel() {
-      // If no device info, return default
-      if (!this.deviceInfo) return 'Unknown'
-      
-      // Check if we have the nested info structure from HIDHandle
-      if (this.deviceInfo.info && this.deviceInfo.info.cid && this.deviceInfo.info.mid) {
-        return this.getDeviceNameFromCidMid(this.deviceInfo.info.cid, this.deviceInfo.info.mid)
+      // Use HIDHandle directly for device info
+      if (HIDHandle.deviceInfo.info && HIDHandle.deviceInfo.info.cid && HIDHandle.deviceInfo.info.mid) {
+        return this.getDeviceNameFromCidMid(HIDHandle.deviceInfo.info.cid, HIDHandle.deviceInfo.info.mid)
       }
-      
-      // Fallback for direct cid/mid properties (if structure changes)
-      if (this.deviceInfo.cid && this.deviceInfo.mid) {
-        return this.getDeviceNameFromCidMid(this.deviceInfo.cid, this.deviceInfo.mid)
-      }
-      
-      return 'Unknown'
+      return 'Ikarus' // Default mouse model
     },
     
     currentDPI() {
-      if (!this.dpiSettings || !this.dpiSettings.stages || !this.dpiSettings.stages.length) return '420'
-      return this.dpiSettings.stages[this.dpiSettings.current] || '420'
+      // Use HIDHandle directly for current DPI
+      const dpiIndex = HIDHandle.deviceInfo.mouseCfg.currentDpi;
+      const dpiValue = HIDHandle.deviceInfo.mouseCfg.dpis[dpiIndex]?.value;
+      console.log("📊 Dashboard DPI:", { dpiIndex, dpiValue, dpis: HIDHandle.deviceInfo.mouseCfg.dpis });
+      return dpiValue || 1600;
     },
     
     batteryLevel() {
-      return this.battery ? this.battery.level : 69
+      // Use HIDHandle directly for battery level
+      const level = HIDHandle.deviceInfo.battery.level;
+      console.log("🔋 Dashboard Battery:", level);
+      return level || 0;
+    },
+    
+    pollingRate() {
+      // Use HIDHandle directly for polling rate
+      const rate = HIDHandle.deviceInfo.mouseCfg.reportRate;
+      console.log("⚡ Dashboard Polling Rate:", rate);
+      return rate || 1000;
     },
     
     liftOffDistance() {
-      return this.sensorSettings ? this.sensorSettings.liftOffDistance : '1MM'
+      // Use HIDHandle directly for LOD
+      const lod = HIDHandle.deviceInfo.mouseCfg.sensor.lod;
+      console.log("📏 Dashboard LOD:", lod);
+      return lod ? `${lod}MM` : '1MM';
     },
     
     motionSync() {
-      return this.sensorSettings ? this.sensorSettings.motionSync : true
+      // Use HIDHandle directly for motion sync
+      const sync = HIDHandle.deviceInfo.mouseCfg.sensor.motionSync;
+      console.log("🔄 Dashboard Motion Sync:", sync);
+      return sync || false;
     },
     
     mouseImageSrc() {
@@ -154,9 +195,109 @@ export default {
     if (!this.isConnected && this.$route.path !== '/initialize') {
       this.$router.push('/initialize');
     }
+    
+    // Start real-time monitoring for dashboard updates
+    this.startRealTimeMonitoring();
+    
+    // Log initial dashboard state
+    console.log("🎮 Dashboard mounted with device data:", {
+      connected: HIDHandle.deviceInfo.deviceOpen,
+      connectState: HIDHandle.deviceInfo.connectState,
+      battery: this.batteryLevel + "%",
+      dpi: this.currentDPI,
+      pollingRate: this.pollingRate + "Hz",
+      lod: this.liftOffDistance,
+      motionSync: this.motionSync ? "ON" : "OFF",
+      timestamp: new Date().toISOString()
+    });
+  },
+  
+  beforeDestroy() {
+    // Clean up timer
+    if (this.realTimeTimer) {
+      clearInterval(this.realTimeTimer);
+    }
+  },
+  
+  watch: {
+    // Watch for device connection changes
+    isConnected(newVal) {
+      if (!newVal) {
+        console.log("❌ Device disconnected - redirecting to initialize");
+        this.$router.push('/initialize');
+      }
+    },
+    
+    // Watch HIDHandle deviceInfo for changes
+    deviceInfo: {
+      handler(newInfo) {
+        if (newInfo.deviceOpen) {
+          this.checkForChangesAndLog();
+        }
+      },
+      deep: true
+    }
   },
   
   methods: {
+    startRealTimeMonitoring() {
+      // Update dashboard every 500ms for real-time sync
+      this.realTimeTimer = setInterval(() => {
+        if (HIDHandle.deviceInfo.deviceOpen) {
+          // Force reactive update by updating data property
+          this.deviceInfo = { ...HIDHandle.deviceInfo };
+        }
+      }, 500);
+      
+      console.log("🔄 Dashboard real-time monitoring started");
+    },
+    
+    checkForChangesAndLog() {
+      const currentState = {
+        battery: this.batteryLevel,
+        dpi: this.currentDPI,
+        pollingRate: this.pollingRate,
+        lod: this.liftOffDistance,
+        motionSync: this.motionSync,
+        connectState: this.deviceInfo.connectState
+      };
+      
+      // Log initial connection only once
+      if (!this.hasLoggedInitialConnection && this.deviceInfo.connectState === 2) {
+        console.log("✅ Device Connected - Initial Status:", {
+          model: this.deviceModel,
+          battery: currentState.battery + "%",
+          dpi: currentState.dpi,
+          pollingRate: currentState.pollingRate + "Hz",
+          lod: currentState.lod,
+          motionSync: currentState.motionSync ? "ON" : "OFF",
+          timestamp: new Date().toISOString()
+        });
+        this.hasLoggedInitialConnection = true;
+        this.lastLoggedState = { ...currentState };
+        return;
+      }
+      
+      // Check for actual changes and log only those
+      const changes = {};
+      let hasChanges = false;
+      
+      Object.keys(currentState).forEach(key => {
+        if (this.lastLoggedState[key] !== currentState[key]) {
+          changes[key] = {
+            from: this.lastLoggedState[key],
+            to: currentState[key]
+          };
+          hasChanges = true;
+        }
+      });
+      
+      if (hasChanges && this.hasLoggedInitialConnection) {
+        console.log("🔄 Device Setting Changed:", changes);
+        this.lastLoggedState = { ...currentState };
+      }
+    },
+    
     handleTabChange(tabId) {
       this.activeTab = tabId
       console.log('Tab changed to:', tabId)
@@ -187,11 +328,17 @@ export default {
       this.$message.info('Profile feature coming soon!')
     },
     
-    getDeviceNameFromCidMid() {
-     console.log(this.deviceInfo)
-     console.log(this.deviceInfo.info)
-     console.log(this.deviceInfo.info.cid)
-     console.log(this.deviceInfo.info.mid)
+    getDeviceNameFromCidMid(cid, mid) {
+      console.log("🔍 Device identification:", { cid, mid });
+      
+      // Map known device combinations to names
+      const deviceMap = {
+        '0_0': 'Unknown Device',
+        // Add more mappings as needed based on your device IDs
+      };
+      
+      const key = `${cid}_${mid}`;
+      return deviceMap[key] || 'Ikarus'; // Default to Ikarus
     }
   }
 }
@@ -302,6 +449,14 @@ export default {
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
+}
+
+.sensor-mouse-section {
+  position: absolute;
+  top: 45%;
+  right: 8vw;
+  transform: translateY(-50%);
+  z-index: 1;
 }
 
 // Responsive breakpoints

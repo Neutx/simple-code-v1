@@ -1,3 +1,5 @@
+import HIDHandle from '@/assets/js/HIDHandle'
+
 export const createInitializeComposable = (store, router, message) => {
   let initializing = false
   let connecting = false
@@ -26,35 +28,84 @@ export const createInitializeComposable = (store, router, message) => {
     if (connecting || hasNavigated) return
     
     connecting = true
+    console.log("🔄 Starting device connection process...")
     
     try {
       // Check if WebHID is supported
       if (!navigator.hid) {
+        console.error("❌ WebHID not supported")
         showConnectionError()
         return
       }
+
+      console.log("✅ WebHID supported, requesting device...")
+
+      // Step 1: Device Discovery (as per .cursorrules)
+      const filters = []; // Show all HID devices
       
-      const connectWithTimeout = Promise.race([
-        store.dispatch('device/connectDevice'),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Connection timeout')), 15000)
-        )
-      ])
-      
-      // Attempt to connect to device
-      const connected = await connectWithTimeout
-      
-      if (connected && !hasNavigated) {
-        hasNavigated = true
-        router.push('/dashboard/home')
-      } else if (!connected) {
-        showConnectionError()
+      if (await HIDHandle.Request_Device(filters)) {
+        console.log("📱 Device selected, getting device info...")
+        
+        // Step 2: Device Validation
+        const info = await HIDHandle.Get_Device_Info();
+        console.log("🔍 Device info retrieved:", info);
+        
+        if (info.cid !== 0 && info.mid !== 0) {
+          console.log("✅ Valid device found, configuring sensor...");
+          
+          // Essential: Configure sensor before connection (as per .cursorrules)
+          HIDHandle.deviceInfo.mouseCfg.sensor.cfg = {
+            range: [
+              { min: 50, max: 26000, step: 50, DPIex: 0 },
+              { min: 26100, max: 52000, step: 100, DPIex: 17 }
+            ]
+          };
+          HIDHandle.deviceInfo.mouseCfg.keysCount = 6;
+          
+          console.log("🔧 Sensor configured, establishing connection...");
+          
+          // Step 3: Real-Time Communication Setup
+          await HIDHandle.Device_Connect();
+          
+          console.log("🎉 Device connection established!");
+          console.log("📊 Final device state:", HIDHandle.deviceInfo);
+          
+          // Emit device connection event for UI updates
+          if (typeof window !== 'undefined' && window.Vue) {
+            const bus = new window.Vue();
+            bus.$emit("deviceConnect", true);
+          }
+          
+          // Update store state
+          store.commit('device/SET_CONNECTED', true);
+          store.commit('device/SET_DEVICE_INFO', HIDHandle.deviceInfo);
+          
+          if (message) {
+            message.success('Device connected successfully!');
+          }
+          
+          if (!hasNavigated) {
+            hasNavigated = true;
+            router.push('/dashboard/home');
+          }
+          
+          return true;
+        } else {
+          console.error("❌ Invalid device - cid or mid is 0");
+          showConnectionError();
+          return false;
+        }
+      } else {
+        console.error("❌ No device selected");
+        showConnectionError();
+        return false;
       }
     } catch (error) {
-      console.error('Connection error:', error)
-      showConnectionError()
+      console.error('❌ Connection error:', error);
+      showConnectionError();
+      return false;
     } finally {
-      connecting = false
+      connecting = false;
     }
   }
 
@@ -62,38 +113,71 @@ export const createInitializeComposable = (store, router, message) => {
     if (pairing || hasNavigated) return
     
     pairing = true
+    console.log("🔄 Starting device pairing process...")
     
     try {
       // Check if WebHID is supported
       if (!navigator.hid) {
+        console.error("❌ WebHID not supported")
         showConnectionError()
         return
       }
+
+      console.log("✅ WebHID supported, requesting device for pairing...")
+
+      // Use empty filters to show all devices
+      const filters = [];
       
-      // Request device permissions
-      const devices = await navigator.hid.requestDevice({
-        filters: [
-          { vendorId: 0x1234 }, // Replace with actual vendor IDs
-          { vendorId: 0x5678 }
-        ]
-      })
-      
-      if (devices.length > 0) {
-        const connected = await store.dispatch('device/connectDevice', devices[0])
-        if (connected && !hasNavigated) {
-          hasNavigated = true
-          router.push('/dashboard/home')
+      if (await HIDHandle.Request_Device(filters)) {
+        console.log("📱 Device selected for pairing, getting device info...")
+        
+        const info = await HIDHandle.Get_Device_Info();
+        console.log("🔍 Device info for pairing:", info);
+        
+        if (info.cid !== 0 && info.mid !== 0) {
+          console.log("✅ Valid device found, starting pairing mode...");
+          
+          // Configure sensor first
+          HIDHandle.deviceInfo.mouseCfg.sensor.cfg = {
+            range: [
+              { min: 50, max: 26000, step: 50, DPIex: 0 },
+              { min: 26100, max: 52000, step: 100, DPIex: 17 }
+            ]
+          };
+          HIDHandle.deviceInfo.mouseCfg.keysCount = 6;
+          
+          // Enter pairing mode
+          await HIDHandle.Set_Device_EnterPairMode();
+          
+          console.log("🔗 Device entered pairing mode");
+          
+          if (message) {
+            message.success('Device paired successfully!');
+          }
+          
+          if (!hasNavigated) {
+            hasNavigated = true;
+            router.push('/dashboard/home');
+          }
+          
+          return true;
+        } else {
+          console.error("❌ Invalid device for pairing - cid or mid is 0");
+          showConnectionError();
+          return false;
         }
       } else {
-        showConnectionError()
+        console.error("❌ No device selected for pairing");
+        return false;
       }
     } catch (error) {
-      console.error('Pairing error:', error)
+      console.error('❌ Pairing error:', error);
       if (error.name !== 'NotAllowedError') {
-        showConnectionError()
+        showConnectionError();
       }
+      return false;
     } finally {
-      pairing = false
+      pairing = false;
     }
   }
 

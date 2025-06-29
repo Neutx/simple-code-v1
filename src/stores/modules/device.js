@@ -11,7 +11,7 @@ const state = {
   connected: false,
   connecting: false,
   pairing: false,
-  deviceInfo: null,
+  deviceInfo: HIDHandle.deviceInfo,
   battery: {
     level: 0,
     charging: false
@@ -21,13 +21,22 @@ const state = {
 }
 
 const getters = {
-  isConnected: state => state.connected,
+  isConnected: state => state.connected || HIDHandle.deviceInfo.deviceOpen,
   isConnecting: state => state.connecting,
   isPairing: state => state.pairing,
-  deviceInfo: state => state.deviceInfo,
-  battery: state => state.battery,
+  deviceInfo: () => HIDHandle.deviceInfo,
+  battery: state => HIDHandle.deviceInfo.battery || state.battery,
   currentSettings: state => state.currentSettings,
-  error: state => state.error
+  error: state => state.error,
+  currentDPI: () => {
+    const dpiIndex = HIDHandle.deviceInfo.mouseCfg.currentDpi;
+    return HIDHandle.deviceInfo.mouseCfg.dpis[dpiIndex]?.value || 1600;
+  },
+  pollingRate: () => HIDHandle.deviceInfo.mouseCfg.reportRate || 1000,
+  batteryLevel: () => HIDHandle.deviceInfo.battery.level || 0,
+  batteryCharging: () => HIDHandle.deviceInfo.battery.charging || false,
+  connectionState: () => HIDHandle.deviceInfo.connectState,
+  isOnline: () => HIDHandle.deviceInfo.online
 }
 
 const mutations = {
@@ -41,7 +50,7 @@ const mutations = {
     state.pairing = pairing
   },
   SET_DEVICE_INFO(state, info) {
-    state.deviceInfo = info
+    state.connected = info ? true : false
   },
   SET_BATTERY(state, battery) {
     state.battery = battery
@@ -54,22 +63,30 @@ const mutations = {
   },
   CLEAR_ERROR(state) {
     state.error = null
+  },
+  SYNC_WITH_HIDHANDLE(state) {
+    state.connected = HIDHandle.deviceInfo.deviceOpen
+    state.battery = HIDHandle.deviceInfo.battery
   }
 }
 
 const actions = {
-  // Connect to device
-  async connectDevice({ commit, rootState }) {
+  async connectDevice({ commit, dispatch, rootState }) {
     commit('SET_CONNECTING', true)
     commit('CLEAR_ERROR')
     
     try {
+      console.log("🔄 Store: Starting device connection...")
+      
       const filters = []
       
       if (await HIDHandle.Request_Device(filters)) {
         const info = await HIDHandle.Get_Device_Info()
+        console.log("🔍 Store: Device info retrieved:", info)
         
         if ((info.cid != 0) && (info.mid != 0)) {
+          console.log("✅ Store: Valid device, configuring...")
+          
           HIDHandle.deviceInfo.mouseCfg.sensor.cfg = {
             range: [
               {
@@ -88,32 +105,46 @@ const actions = {
           }
           HIDHandle.deviceInfo.mouseCfg.keysCount = 6
           
-          // Start device connection (this will handle the rest in background)
-          HIDHandle.Device_Connect()
+          console.log("🔧 Store: Sensor configured, connecting...")
+          
+          await HIDHandle.Device_Connect()
+          
+          console.log("🎉 Store: Device connected successfully!")
+          console.log("📊 Store: HIDHandle state:", HIDHandle.deviceInfo)
           
           commit('SET_DEVICE_INFO', HIDHandle.deviceInfo)
           commit('SET_CONNECTED', true)
           
+          console.log("🔗 Device connection established - HIDHandle.deviceInfo updated")
+          
           if (HIDHandle.deviceInfo.battery) {
             commit('SET_BATTERY', HIDHandle.deviceInfo.battery)
           }
-          // Save device connection to user's profile (non-blocking)
+          
           if (rootState.auth.user) {
-            console.log('Firestore operations temporarily disabled')
-            // TODO: Re-enable once Firestore is properly configured
-            // dispatch('saveDeviceConnection', {
-            //   userId: rootState.auth.user.uid,
-            //   deviceInfo: info
-            // }).catch(error => {
-            //   console.error('Error saving device connection:', error)
-            // })
+            dispatch('saveDeviceConnection', {
+              userId: rootState.auth.user.uid,
+              deviceInfo: info
+            }).catch(error => {
+              console.error('Error saving device connection:', error)
+            })
           }
           
+          dispatch('startRealTimeMonitoring')
+          
           return true
+        } else {
+          console.error("❌ Store: Invalid device - cid or mid is 0")
+          commit('SET_ERROR', 'Invalid device detected')
+          return false
         }
+      } else {
+        console.error("❌ Store: No device selected")
+        commit('SET_ERROR', 'No device selected')
+        return false
       }
-      return false
     } catch (error) {
+      console.error("❌ Store: Connection error:", error)
       commit('SET_ERROR', error.message)
       throw error
     } finally {
@@ -121,81 +152,63 @@ const actions = {
     }
   },
 
-  // Disconnect device
-  async disconnectDevice({ commit }) {
+  startRealTimeMonitoring({ commit }) {
+    console.log("🔄 Starting real-time HIDHandle monitoring...")
+    
+    const monitorInterval = setInterval(() => {
+      if (HIDHandle.deviceInfo.deviceOpen) {
+        commit('SYNC_WITH_HIDHANDLE')
+        
+        console.log("📊 Real-time sync:", {
+          connected: HIDHandle.deviceInfo.deviceOpen,
+          connectState: HIDHandle.deviceInfo.connectState,
+          battery: HIDHandle.deviceInfo.battery.level + "%",
+          dpi: HIDHandle.deviceInfo.mouseCfg.dpis[HIDHandle.deviceInfo.mouseCfg.currentDpi]?.value,
+          reportRate: HIDHandle.deviceInfo.mouseCfg.reportRate + "Hz",
+          online: HIDHandle.deviceInfo.online,
+          timestamp: new Date().toISOString()
+        })
+      } else {
+        clearInterval(monitorInterval)
+        commit('SET_CONNECTED', false)
+        console.log("❌ Device disconnected - stopping monitoring")
+      }
+    }, 1000)
+    
+    if (!window.deviceMonitorInterval) {
+      window.deviceMonitorInterval = monitorInterval
+    }
+  },
+
+  stopRealTimeMonitoring() {
+    if (window.deviceMonitorInterval) {
+      clearInterval(window.deviceMonitorInterval)
+      window.deviceMonitorInterval = null
+      console.log("🛑 Real-time monitoring stopped")
+    }
+  },
+
+  async disconnectDevice({ commit, dispatch }) {
     try {
+      dispatch('stopRealTimeMonitoring')
       commit('SET_CONNECTED', false)
       commit('SET_DEVICE_INFO', null)
       commit('SET_CURRENT_SETTINGS', null)
       commit('SET_BATTERY', { level: 0, charging: false })
+      console.log("🔌 Device disconnected")
     } catch (error) {
       commit('SET_ERROR', error.message)
     }
   },
 
-  // Pair device
-  async pairDevice({ commit }) {
-    commit('SET_PAIRING', true)
-    commit('CLEAR_ERROR')
-    
-    try {
-      const filters = []
-      
-      if (await HIDHandle.Request_Device(filters)) {
-        const info = await HIDHandle.Get_Device_Info()
-        
-        if ((info.cid != 0) && (info.mid != 0)) {
-          await HIDHandle.Set_Device_EnterPairMode()
-          
-          // Monitor pairing status
-          const checkPairStatus = () => {
-            if (HIDHandle.pairResult.pairStatus === HIDHandle.DevicePairResult.Success) {
-              commit('SET_PAIRING', false)
-              return true
-            } else if (HIDHandle.pairResult.pairStatus === HIDHandle.DevicePairResult.Fail) {
-              commit('SET_PAIRING', false)
-              commit('SET_ERROR', 'Pairing failed')
-              return false
-            }
-            return null
-          }
-          
-          return new Promise((resolve, reject) => {
-            const interval = setInterval(() => {
-              const result = checkPairStatus()
-              if (result !== null) {
-                clearInterval(interval)
-                clearTimeout(timeout)
-                if (result) {
-                  resolve(true)
-                } else {
-                  reject(new Error('Pairing failed'))
-                }
-              }
-            }, 1000)
-            
-            // Timeout after 30 seconds
-            const timeout = setTimeout(() => {
-              clearInterval(interval)
-              commit('SET_PAIRING', false)
-              reject(new Error('Pairing timeout'))
-            }, 30000)
-          })
-        }
-      }
-    } catch (error) {
-      commit('SET_PAIRING', false)
-      commit('SET_ERROR', error.message)
-      throw error
-    }
-  },
-
-  // Update battery status
   updateBattery({ commit }, battery) {
     commit('SET_BATTERY', battery)
   },
 
-  // Save device connection to Firestore
+  syncWithHIDHandle({ commit }) {
+    commit('SYNC_WITH_HIDHANDLE')
+  },
+
   async saveDeviceConnection(context, { userId, deviceInfo }) {
     try {
       const deviceRef = doc(db, 'users', userId, 'devices', deviceInfo.cid + '_' + deviceInfo.mid)
@@ -219,7 +232,6 @@ const actions = {
     }
   },
 
-  // Save device settings to Firestore
   async saveDeviceSettings({ commit, rootState }, settings) {
     try {
       if (!rootState.auth.user || !state.deviceInfo) return
@@ -242,7 +254,6 @@ const actions = {
     }
   },
 
-  // Load device settings from Firestore
   async loadDeviceSettings({ commit, rootState }, deviceId) {
     try {
       if (!rootState.auth.user) return null
