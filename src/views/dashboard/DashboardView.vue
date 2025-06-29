@@ -55,14 +55,32 @@
         <SensorMouseDisplay 
           :device-model="deviceModel" 
           :mouse-image-src="mouseImageSrc"
-          :current-d-p-i="currentDPI"
-          :polling-rate="pollingRate"
-          :battery-level="batteryLevel"
+          :profileCount="4"
+          :activeProfile="1"
+          :currentDPI="currentDPI"
+          :pollingRate="pollingRate"
+          :batteryLevel="batteryLevel"
         />
       </div>
       
       <!-- Sensor Settings Panel (only visible in sensor mode) -->
       <SensorSettingsPanel v-if="activeTab === 'sensor'" />
+      
+      <!-- RGB Mouse Display -->
+      <div class="rgb-mouse-section" v-if="activeTab === 'rgb'">
+        <SensorMouseDisplay 
+          :device-model="deviceModel" 
+          :mouse-image-src="mouseImageSrc"
+          :profileCount="4"
+          :activeProfile="1"
+          :currentDPI="currentDPI"
+          :pollingRate="pollingRate"
+          :batteryLevel="batteryLevel"
+        />
+      </div>
+      
+      <!-- RGB Settings Panel (only visible in RGB mode) -->
+      <RGBSettingsPanel v-if="activeTab === 'rgb'" />
       
       <!-- Router View for Tab Content -->
       <div class="content-overlay">
@@ -71,7 +89,7 @@
     </div>
 
     <!-- Status Bar -->
-    <div class="dashboard-footer" v-if="!isDPIMode && activeTab !== 'sensor'">
+    <div class="dashboard-footer" v-if="!isDPIMode && activeTab !== 'rgb' && activeTab !== 'sensor'">
       <StatusBar 
         :device-model="deviceModel"
         :current-d-p-i="currentDPI"
@@ -98,6 +116,7 @@ import KreoLogo from '@/components/dashboard/KreoLogo.vue'
 import StatusBar from '@/components/dashboard/StatusBar.vue'
 import SensorSettingsPanel from '@/components/dashboard/SensorSettingsPanel.vue'
 import SensorMouseDisplay from '@/components/dashboard/SensorMouseDisplay.vue'
+import RGBSettingsPanel from '@/components/dashboard/RGBSettingsPanel.vue'
 
 export default {
   name: 'DashboardView',
@@ -112,24 +131,15 @@ export default {
     KreoLogo,
     StatusBar,
     SensorSettingsPanel,
-    SensorMouseDisplay
+    SensorMouseDisplay,
+    RGBSettingsPanel
   },
   data() {
     return {
       activeTab: 'home',
       activeDPI: 1, // Default to second profile (1200 DPI)
       deviceInfo: HIDHandle.deviceInfo, // Reactive reference to HIDHandle
-      realTimeTimer: null,
-      // Track previous values to detect changes
-      lastLoggedState: {
-        battery: null,
-        dpi: null,
-        pollingRate: null,
-        lod: null,
-        motionSync: null,
-        connectState: null
-      },
-      hasLoggedInitialConnection: false
+      realTimeTimer: null
     }
   },
   computed: {
@@ -232,7 +242,15 @@ export default {
     deviceInfo: {
       handler(newInfo) {
         if (newInfo.deviceOpen) {
-          this.checkForChangesAndLog();
+          console.log("📊 Dashboard - Device data updated:", {
+            battery: this.batteryLevel + "%",
+            dpi: this.currentDPI,
+            pollingRate: this.pollingRate + "Hz",
+            lod: this.liftOffDistance,
+            motionSync: this.motionSync ? "ON" : "OFF",
+            connectState: newInfo.connectState,
+            timestamp: new Date().toISOString()
+          });
         }
       },
       deep: true
@@ -246,56 +264,19 @@ export default {
         if (HIDHandle.deviceInfo.deviceOpen) {
           // Force reactive update by updating data property
           this.deviceInfo = { ...HIDHandle.deviceInfo };
+          
+          // Log dashboard sync status
+          console.log("🔄 Dashboard sync:", {
+            battery: this.batteryLevel + "%",
+            dpi: this.currentDPI,
+            pollingRate: this.pollingRate + "Hz",
+            online: HIDHandle.deviceInfo.online ? "CONNECTED" : "OFFLINE",
+            timestamp: new Date().toISOString()
+          });
         }
       }, 500);
       
       console.log("🔄 Dashboard real-time monitoring started");
-    },
-    
-    checkForChangesAndLog() {
-      const currentState = {
-        battery: this.batteryLevel,
-        dpi: this.currentDPI,
-        pollingRate: this.pollingRate,
-        lod: this.liftOffDistance,
-        motionSync: this.motionSync,
-        connectState: this.deviceInfo.connectState
-      };
-      
-      // Log initial connection only once
-      if (!this.hasLoggedInitialConnection && this.deviceInfo.connectState === 2) {
-        console.log("✅ Device Connected - Initial Status:", {
-          model: this.deviceModel,
-          battery: currentState.battery + "%",
-          dpi: currentState.dpi,
-          pollingRate: currentState.pollingRate + "Hz",
-          lod: currentState.lod,
-          motionSync: currentState.motionSync ? "ON" : "OFF",
-          timestamp: new Date().toISOString()
-        });
-        this.hasLoggedInitialConnection = true;
-        this.lastLoggedState = { ...currentState };
-        return;
-      }
-      
-      // Check for actual changes and log only those
-      const changes = {};
-      let hasChanges = false;
-      
-      Object.keys(currentState).forEach(key => {
-        if (this.lastLoggedState[key] !== currentState[key]) {
-          changes[key] = {
-            from: this.lastLoggedState[key],
-            to: currentState[key]
-          };
-          hasChanges = true;
-        }
-      });
-      
-      if (hasChanges && this.hasLoggedInitialConnection) {
-        console.log("🔄 Device Setting Changed:", changes);
-        this.lastLoggedState = { ...currentState };
-      }
     },
     
     handleTabChange(tabId) {
@@ -453,9 +434,17 @@ export default {
 
 .sensor-mouse-section {
   position: absolute;
-  top: 45%;
-  right: 8vw;
-  transform: translateY(-50%);
+  top: 50%;
+  left: calc(50% + 300px); /* Increased offset for more spacing from sensor panel */
+  transform: translate(-50%, -50%);
+  z-index: 1;
+}
+
+.rgb-mouse-section {
+  position: absolute;
+  top: 50%;
+  left: calc(50% + 200px); /* Offset to account for RGB panel width */
+  transform: translate(-50%, -50%);
   z-index: 1;
 }
 

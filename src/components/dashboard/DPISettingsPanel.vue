@@ -12,65 +12,73 @@
       <!-- DPI Light Section -->
       <div class="setting-row">
         <label class="setting-label">DPI Light</label>
-        <div class="dropdown-container">
-          <select v-model="dpiLightMode" class="dpi-dropdown">
-            <option value="steady">Steady</option>
-            <option value="off">Off</option>
-            <option value="breathing">Breathing</option>
-          </select>
-          <div class="dropdown-arrow">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <path d="M7 10L12 15L17 10" stroke="currentColor" stroke-width="1.5"/>
+        <div class="dropdown-wrapper">
+          <div class="dropdown-container" @click="toggleDropdown">
+            <span class="dropdown-value">{{ selectedMode }}</span>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" class="dropdown-icon" :class="{ rotated: dropdownOpen }">
+              <path d="M7 10L12 15L17 10" stroke="#D4D4D8" stroke-width="1.5" />
             </svg>
           </div>
+          <!-- Dropdown Options -->
+          <transition name="dropdown">
+            <div v-if="dropdownOpen" class="dropdown-options">
+              <div 
+                v-for="mode in lightModes" 
+                :key="mode"
+                class="dropdown-option"
+                @click.stop="selectMode(mode)"
+              >
+                {{ mode }}
+              </div>
+            </div>
+          </transition>
         </div>
       </div>
 
       <!-- DPI Light Brightness -->
-      <div class="setting-section">
-        <label>DPI light brightness</label>
-        <br>
+      <div class="slider-section">
+        <label class="slider-label">DPI light brightness</label>
         <div class="slider-container">
-          <div class="slider-labels">
-            <span v-for="n in 10" :key="n" class="slider-label" :class="{ active: n <= dpiLightBrightness }">
-              {{ n }}
+          <div class="slider-track">
+            <div class="slider-fill" :style="{ width: (dpiLightBrightness * 10) + '%' }"></div>
+          </div>
+          <div class="slider-numbers">
+            <span
+              v-for="num in 10"
+              :key="num"
+              class="slider-number"
+              :class="{ active: num === dpiLightBrightness }"
+              @click="setBrightness(num)"
+            >
+              {{ num }}
             </span>
           </div>
-          <input 
-            type="range" 
-            v-model="dpiLightBrightness" 
-            min="1" 
-            max="10" 
-            class="custom-slider brightness-slider"
-            :style="{ background: `linear-gradient(to right, #A278FD 0%, #A278FD ${(dpiLightBrightness/10)*100}%, #27272A ${(dpiLightBrightness/10)*100}%, #27272A 100%)` }"
-          />
         </div>
       </div>
 
       <!-- DPI Light Speed -->
-      <div class="setting-section">
-        <br>
-        <label>DPI light speed</label>
-        <br>
+      <div class="slider-section">
+        <label class="slider-label">DPI light speed</label>
         <div class="slider-container">
-          <div class="slider-labels">
-            <span v-for="n in 10" :key="n" class="slider-label" :class="{ active: n <= dpiLightSpeed }">
-              {{ n }}
+          <div class="slider-track">
+            <div class="slider-fill" :style="{ width: (dpiLightSpeed * 10) + '%' }"></div>
+          </div>
+          <div class="slider-numbers">
+            <span
+              v-for="num in 10"
+              :key="num"
+              class="slider-number"
+              :class="{ active: num === dpiLightSpeed }"
+              @click="setSpeed(num)"
+            >
+              {{ num }}
             </span>
           </div>
-          <input 
-            type="range" 
-            v-model="dpiLightSpeed" 
-            min="1" 
-            max="10" 
-            class="custom-slider speed-slider"
-            :style="{ background: `linear-gradient(to right, #A278FD 0%, #A278FD ${(dpiLightSpeed/10)*100}%, #27272A ${(dpiLightSpeed/10)*100}%, #27272A 100%)` }"
-          />
         </div>
       </div>
 
       <!-- Max DPI Profiles -->
-      <div class="setting-section profile-section">
+      <div class="profile-section">
         <br>
         <label>Max DPI profiles</label>
         <br>
@@ -120,7 +128,9 @@ export default {
   name: 'DPISettingsPanel',
   data() {
     return {
-      dpiLightMode: 'steady',
+      selectedMode: 'Steady',
+      dropdownOpen: false,
+      lightModes: ['Off', 'Steady', 'Breathing'],
       dpiLightBrightness: 5,
       dpiLightSpeed: 1,
       selectedProfile: 1,
@@ -135,15 +145,37 @@ export default {
       ]
     }
   },
-  watch: {
-    dpiLightBrightness(val) {
-      // Ensure the value is a number
-      this.dpiLightBrightness = parseInt(val)
+  methods: {
+    toggleDropdown() {
+      this.dropdownOpen = !this.dropdownOpen
     },
-    dpiLightSpeed(val) {
-      // Ensure the value is a number
-      this.dpiLightSpeed = parseInt(val)
+    
+    selectMode(mode) {
+      this.selectedMode = mode
+      this.dropdownOpen = false
+      this.$emit('mode-changed', mode)
+    },
+    
+    setBrightness(value) {
+      this.dpiLightBrightness = parseInt(value)
+      this.$emit('brightness-changed', this.dpiLightBrightness)
+    },
+    
+    setSpeed(value) {
+      this.dpiLightSpeed = parseInt(value)
+      this.$emit('speed-changed', this.dpiLightSpeed)
     }
+  },
+  mounted() {
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!this.$el.contains(e.target)) {
+        this.dropdownOpen = false
+      }
+    })
+  },
+  beforeDestroy() {
+    document.removeEventListener('click', () => {})
   }
 }
 </script>
@@ -171,6 +203,7 @@ export default {
   padding: 31px 16px 16px 16px;
   z-index: 20;
   overflow-y: auto;
+  overflow-x: visible;
   scrollbar-width: none;
   
   &::-webkit-scrollbar {
@@ -213,115 +246,144 @@ export default {
   font-family: 'DM Sans', sans-serif;
 }
 
-.dropdown-container {
+.dropdown-wrapper {
   position: relative;
+  z-index: 1000;
+}
+
+.dropdown-container {
   width: 144px;
   padding: 8px;
   background: transparent;
   border-radius: 10px;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
+  cursor: pointer;
 
-  &:focus-within {
-    background: rgba(39, 39, 39);
+  &:hover {
+    background: rgba(39, 39, 39, 0.5);
   }
 }
 
-.dpi-dropdown {
-  width: 100%;
-  height: 24px;
-  background: transparent;
-  border: none;
+.dropdown-value {
   color: #A278FD;
   font-size: 20px;
   font-family: 'DM Sans', sans-serif;
-  text-align: right;
-  padding-right: 28px;
-  appearance: none;
-  cursor: pointer;
-  
-  &:focus {
-    outline: none;
-  }
+  user-select: none;
 }
 
-.dropdown-arrow {
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
+.dropdown-icon {
   color: #D4D4D8;
-  pointer-events: none;
+  transition: transform 0.2s ease;
+  
+  &.rotated {
+    transform: rotate(180deg);
+  }
 }
 
-.setting-section {
-  margin-bottom: 24px;
-  padding: 0 8px;
+.dropdown-options {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  width: 144px;
+  background: rgba(39, 39, 42, 0.98);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  z-index: 2000;
+  margin-top: 4px;
+  overflow: hidden;
+}
 
-  label {
-    display: block;
-    color: white;
-    font-size: 16px;
-    font-weight: 500;
-    font-family: 'DM Sans', sans-serif;
-    margin-bottom: 16px;  // Increased spacing instead of <br>
+.dropdown-option {
+  padding: 12px 16px;
+  color: white;
+  font-size: 18px;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  
+  &:hover {
+    background: rgba(162, 120, 253, 0.1);
   }
+  
+  &:not(:last-child) {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+}
+
+.dropdown-enter-active, .dropdown-leave-active {
+  transition: all 0.2s ease;
+}
+
+.dropdown-enter, .dropdown-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.slider-section {
+  margin-bottom: 32px;
+  padding: 0 8px;
+}
+
+.slider-label {
+  display: block;
+  color: white;
+  font-size: 16px;
+  font-weight: 500;
+  font-family: 'DM Sans', sans-serif;
+  margin-bottom: 24px;
 }
 
 .slider-container {
   position: relative;
   width: 100%;
-  height: 48px;
 }
 
-.custom-slider {
+.slider-track {
   width: 100%;
   height: 6px;
   background: #27272A;
   border-radius: 8px;
-  appearance: none;
-  position: absolute;
-  bottom: 0;
-  
-  &::-webkit-slider-thumb {
-    appearance: none;
-    width: 16px;
-    height: 6px;
-    background: #A278FD;
-    border-radius: 8px;
-    cursor: pointer;
-  }
-
-  &.brightness-slider {
-    background: linear-gradient(to right, #A278FD 0%, #A278FD 50%, #27272A 50%, #27272A 100%);
-  }
-
-  &.speed-slider {
-    background: linear-gradient(to right, #A278FD 0%, #A278FD 10%, #27272A 10%, #27272A 100%);
-  }
+  margin-bottom: 16px;
+  position: relative;
+  overflow: hidden;
 }
 
-.slider-labels {
+.slider-fill {
+  height: 100%;
+  background: #A278FD;
+  border-radius: 8px;
+  transition: width 0.2s ease;
+}
+
+.slider-numbers {
   display: flex;
   justify-content: space-between;
-  position: absolute;
   width: 100%;
-  top: 0;
-  padding-bottom: 12px;
+}
+
+.slider-number {
+  color: white;
+  font-size: 16px;
+  font-weight: 500;
+  font-family: 'DM Sans', sans-serif;
+  opacity: 0.3;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+  width: 28px;
+  text-align: center;
   
-  .slider-label {
-    color: white;
-    font-size: 16px;
-    font-weight: 500;
-    font-family: 'DM Sans', sans-serif;
-    opacity: 0.3;
-    text-align: center;
-    width: 28px;
-    
-    &.active {
-      opacity: 1;
-    }
+  &.active {
+    opacity: 1;
+    color: #A278FD;
+  }
+  
+  &:hover {
+    opacity: 0.7;
   }
 }
 

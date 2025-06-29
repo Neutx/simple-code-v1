@@ -127,9 +127,11 @@ export default {
       evt.target.src = '/mice/ikarus.svg'
     },
     toggleProfiles() {
+      console.log('🔄 Profile toggle clicked, expanded:', !this.profilesExpanded)
       this.profilesExpanded = !this.profilesExpanded
     },
     selectProfile(index) {
+      console.log('📋 Profile selected:', index)
       this.$emit('profile-selected', index)
       this.profilesExpanded = false // Collapse after selection
     }
@@ -140,31 +142,29 @@ export default {
 <style lang="scss" scoped>
 .sensor-mouse-display {
   position: relative;
-  width: clamp(320px, 47vw, 904px);
-  height: clamp(400px, 56vh, 609px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 904px;
+  height: 609px;
   pointer-events: none; /* prevent sensor card overlap clicks */
 }
 
 .mouse-glow {
   position: absolute;
-  width: 40%;
-  height: 50%;
+  width: 320px;
+  height: 384px;
+  left: 329px;
+  top: 92px;
   background: #8b5cf6;
   border-radius: 50%;
-  filter: blur(120px);
-  top: 35%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  filter: blur(119.2px);
   z-index: 1;
 }
 
 .mouse-img {
-  position: relative;
-  width: 124px; /* Matches provided placeholder */
-  height: 205px;
+  position: absolute;
+  width: 256px;
+  height: 384px;
+  left: 356px;
+  top: 50px;
   object-fit: contain;
   z-index: 2;
 }
@@ -172,18 +172,18 @@ export default {
 .profiles-wrapper {
   position: absolute;
   width: 144px;
-  bottom: -50px;
-  left: 50%;
-  transform: translateX(-50%);
+  height: 256px;
+  left: 414px;
+  top: 550px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  z-index: 3;
+  z-index: 10;
   pointer-events: auto;
   transition: all 0.3s ease;
 
   &.expanded {
-    bottom: -200px; // Adjust position when expanded to fit all profiles
+    top: 510px; // Adjust position when expanded to fit all profiles
   }
 }
 
@@ -267,7 +267,7 @@ export default {
 
 .sensor-status-bar {
   position: absolute;
-  bottom: -140px;
+  top: 620px;
   left: 50%;
   transform: translateX(-50%);
   width: max-content;
