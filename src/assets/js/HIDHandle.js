@@ -6,7 +6,7 @@ import BatteryHandle from './BatteryHandle';
 import UserConvert from './UserConvert';
 
 //浏览模式，有USB连接过程，但是没有USB数据收发
-var visit = true; 
+var visit = false; 
 
 /*  */
 var Command = {
@@ -108,8 +108,6 @@ var ReportId = 0x08;
 var devicePID;
 
 var device;
-var historyDevices = [];
-var historyDevicesInfos = [];
 var receivedData = [];
 var sendingFlag = false;
 var flashData = new Uint8Array(0x2000).fill(0);
@@ -130,8 +128,6 @@ var pairResult = {
   pairLeftTime : 20,
 };
 
-var getCurrentPorfileFlag = false;
-var setCurrentPorfileFlag = false;
 var getPairResultTimeCount = 0;
 
 //是否需要获取电量
@@ -327,41 +323,29 @@ async function Request_Device(filters) {
   if(devices.length == 0)
     return false;
 
-  let connectDevices  = JSON.parse(localStorage.getItem('hidDevices')) || [];
 
   var connect = false;
-  for(let temp of devices) {
+  for(let temp of devices)
+  {
     if(visit) {
       connect = visit;
       break;
     }
 
     //判断连接设备的端口是否符合要求
-    for(let i = 0;i < temp.collections.length;i++) {
+    for(let i = 0;i < temp.collections.length;i++)
+    {
       if(temp.collections[i].inputReports.length === 1 && 
-          temp.collections[i].outputReports.length === 1) {
+          temp.collections[i].outputReports.length === 1)
+        {
           //只识别ReportId为0x08的设备
           if(ReportId == temp.collections[i].outputReports[0].reportId) {
             device = temp;
-
-            if(connectDevices.length == 0) {
-              connectDevices.push(device.productName);
-              localStorage.setItem('hidDevices', JSON.stringify(connectDevices));
-            }
-            else {
-              if (!connectDevices.includes(device.productName)) {
-                connectDevices.push(device.productName);
-                localStorage.setItem('hidDevices', JSON.stringify(connectDevices));
-              }
-            }
-
-            console.log("hidDevices",JSON.stringify(connectDevices))
-
             if(!device.opened)
             {
               await device.open();
             } 
-            deviceInfo.version.dongle = "--";
+          
             deviceInfo.deviceOpen = true;
             read_HID_Buffer();
           
@@ -389,152 +373,24 @@ async function Device_Connect() {
   }
 }
 
-function deepEqual(obj1, obj2) {
-  if (obj1 === obj2) {
-    return true;
-  }
-  if (typeof obj1!== 'object' || obj1 === null || typeof obj2!== 'object' || obj2 === null) {
-    return false;
-  }
-  const keys1 = Object.keys(obj1);
-  const keys2 = Object.keys(obj2);
-  if (keys1.length!== keys2.length) {
-    return false;
-  }
-  for (const key of keys1) {
-    if (!keys2.includes(key) ||!deepEqual(obj1[key], obj2[key])) {
-      return false;
-    }
-  }
-  return true;
-}
-
-async function Get_HistoryDevicesInfo() {
-  const connectDevices = JSON.parse(localStorage.getItem('hidDevices'));
-
-  const devices = await navigator.hid.getDevices();
-
-  if(devices.length == 0) {
-    historyDevicesInfos = [];
-    return historyDevicesInfos;
-  }
-
-  var equal = true;
-
-  if (historyDevices.length !== devices.length) {
-    equal = false;
-  }
-  else {
-    equal = historyDevices.every((item, index) => deepEqual(item, devices[index]));
-  }
-
-  if(equal == false) {
-    historyDevicesInfos = [];
-    historyDevices = devices;
-    for(let j = 0;j < devices.length;j++) {
-      let temp = devices[j];
-      for(let i = 0;i < temp.collections.length;i++){
-        if(temp.collections[i].inputReports.length === 1 && 
-          temp.collections[i].outputReports.length === 1){
-          //只识别ReportId为0x08的设备
-          if(ReportId == temp.collections[i].outputReports[0].reportId) {
-            device = temp;
-  
-            if(!device.opened) {
-              await device.open();
-            } 
-          
-            deviceInfo.deviceOpen = true;
-            read_HID_Buffer();
-  
-            const info = await Get_Device_Info();
-            var isWired = false;
-            var reportRate = 1000;
-            // 设备类型 
-            // 0:dongle_1K, 
-            // 1:dongle_4K, 
-            // 2:有线_1K  
-            // 3:有线_8K 
-            // 4:dongle_2K 
-            // 5:dongle_8K
-            if(info.type == 0x02) {
-              isWired = true;
-              reportRate = 1000;
-            }
-            else if(info.type == 0x03) {
-              isWired = true;
-              reportRate = 8000;
-            }
-            else {
-              isWired = false;
-              if(info.type == 0x00) {
-                reportRate = 1000;
-              }
-              else if(info.type == 0x01) {
-                reportRate = 4000;
-              }
-              else if(info.type == 0x04) {
-                reportRate = 2000;
-              }
-              else if(info.type == 0x05) {
-                reportRate = 8000;
-              }
-            }
-
-            var online = await Get_Device_Online();
-            const historyDeviceInfo = {
-              device : temp,
-              cid : info.cid,
-              mid : info.mid,
-              isWired : isWired,
-              reportRate : reportRate,
-              online : online,
-            }
-            historyDevicesInfos.push(historyDeviceInfo);
-            break;
-          }
-        }   
-      }     
-    } 
-    console.log("Device_Reconnect",connectDevices,devices,historyDevicesInfos);
-  }
-  else {
-    for(let i = 0;i < historyDevicesInfos.length;i++) {
-      let temp = historyDevicesInfos[i].device;
-      device = temp;
-      
-      if(!device.opened) {
-        await device.open();
-      } 
-    
-      deviceInfo.deviceOpen = true;
-      read_HID_Buffer();
-
-      var online = await Get_Device_Online();
-      historyDevicesInfos[i].online = online;
-    }
-  }
-
-  return historyDevicesInfos;
-}
-
 //回连设备
-async function Device_Reconnect(temp) {
-  device = temp;
-
-  if(!device.opened)
+async function Device_Reconnect() {
+  const devices = await navigator.hid.getDevices();
+  if(devices.length > 0)
   {
-    await device.open();
+    console.log(devices);
+    for(let temp of devices)
+    {
+      console.log('Reconnect Device:', temp);
+  
+      if(temp.collections.length > 2)
+      {
+        device = temp;
+        await Device_Connect();
+        break;
+      }
+    }
   } 
-
-  deviceInfo.deviceOpen = true;
-  read_HID_Buffer();
-
-  devicePID = device.vendorId;
-  Device_Disconnect();
-
-  await Get_Device_Info();
-  console.log('requestDevice:',device,deviceInfo);
 }
 
 //设备退出
@@ -577,7 +433,7 @@ async function Device_Close(){
 
   Handle_Exit();
   if(visit == false) {
-    if(typeof device != 'undefined')     
+    if(typeof device != 'undefined')
       device.close();
   }
 }
@@ -585,13 +441,16 @@ async function Device_Close(){
 //读USB设备上传的数据
 function read_HID_Buffer() {
   device.oninputreport = async (event) => {
-    if(event.reportId === ReportId) {
+    if(event.reportId === ReportId)
+    {
       receivedData = new Uint8Array(event.data.buffer);
 
       let command = receivedData[0];
 
-      if(receivedData[1] == 0){
-        switch(command){
+      if(receivedData[1] == 0)
+      {
+        switch(command)
+        {
           //获取设备的cid,mid和设备类型
           case Command.EncryptionData:
             deviceInfo.info.cid = receivedData[9];
@@ -658,7 +517,7 @@ function read_HID_Buffer() {
             }
             else {
               BatteryHandle.setDisplayLevel(deviceInfo.battery);
-              //console.log("setDisplayLevel:",deviceInfo.battery,BatteryHandle.getDisplayLevel());
+              console.log("setDisplayLevel:",deviceInfo.battery,BatteryHandle.getDisplayLevel());
               deviceInfo.battery.level = BatteryHandle.getDisplayLevel();
             }
             break;
@@ -728,10 +587,7 @@ function read_HID_Buffer() {
 
             //配置变化，需要获取鼠标的所有设置,与打开驱动时同步鼠标的设置操作一样
             if((value & 0x04) == 0x04) {
-              if(getCurrentPorfileFlag == false && setCurrentPorfileFlag == false) {
-                getCurrentPorfileFlag = true;
-                await Get_Device_Profile();
-              }
+              Get_Device_Profile();
             }
 
             //DPI指示灯变化，需要获取DPI指示灯的配置
@@ -763,12 +619,6 @@ function read_HID_Buffer() {
           case Command.GetCurrentConfig:
             deviceInfo.supportChangeProfile = true;
             deviceInfo.profile = receivedData[5];
-
-            if(visit == false && getCurrentPorfileFlag) {
-              getCurrentPorfileFlag = false;
-              await Read_Mouse_Flash();
-              deviceInfo.connectState = DeviceConectState.Connected;
-            }
             break;
 
            case Command.SetCurrentConfig:
@@ -807,10 +657,6 @@ function read_HID_Buffer() {
 
           case Command.GetCurrentConfig:
             deviceInfo.supportChangeProfile = false;
-            break;
-
-          case Command.GetDongleVersion:
-            deviceInfo.version.dongle = "v1.0";
             break;
         }
       }
@@ -1090,15 +936,12 @@ async function Set_Device_Profile(value) {
   {
     var data =[];
     data.push(value);
-    setCurrentPorfileFlag = true;
     await Send_Command_With_Value(Command.SetCurrentConfig,data);
 
     if(visit == false) {
       await Read_Mouse_Flash();
       deviceInfo.connectState = DeviceConectState.Connected;
     }
-    deviceInfo.profile = value;    
-    setCurrentPorfileFlag = false;
   }
 
   return flag;
@@ -1398,78 +1241,43 @@ function Get_Flash_Time_Tick() {
   }
 }
 
-function EepromValue_To_DPIValue(val,dpiEx) {
-  var high = (dpiEx & 0x0C) >> 2;
-  var value = (val) + (high << 8);
-  var doubleFlag = (dpiEx & 0x01) == 0x01;
-  var step100Flag = (dpiEx & 0x02) == 0x02;
-
-  var index = 0;
-  if ((typeof deviceInfo.mouseCfg.sensor.cfg.values !== "undefined") &&
-      (deviceInfo.mouseCfg.sensor.cfg.values !== null)) {
-
-    for(index = 0;index < deviceInfo.mouseCfg.sensor.cfg.values.length;index++) {
-      if(deviceInfo.mouseCfg.sensor.cfg.values[index] == value) {
-        break;
-      }
-    }
-
-    value = index * deviceInfo.mouseCfg.sensor.cfg.range[0].step +
-            deviceInfo.mouseCfg.sensor.cfg.range[0].min;
-    console.log("updateMouseDpi",index,value);
-  }
-  else {
-    value = (value + 1) * deviceInfo.mouseCfg.sensor.cfg.range[0].step;
-  }
-
-  if(doubleFlag) {
-    value *= 2;
-  }
-
-  if(step100Flag) {
-    value *= 2;
-  }
-
-  return value;
-}
-
 //更新鼠标DPI
 function Update_Mouse_Dpi() {
   for(var i = 0;i < 8;i ++) {
     var addr = i * 4 + MouseEepromAddr.DPIValue;
-    // var high = (flashData[addr + 2] & 0x0C) >> 2;
-    // var value = (flashData[addr]) + (high << 8);
-    // var doubleFlag = (flashData[addr + 2] & 0x01) == 0x01;
-    // var step100Flag = (flashData[addr + 2] & 0x02) == 0x02;
+    var high = (flashData[addr + 2] & 0x0C) >> 2;
+    var value = (flashData[addr]) + (high << 8);
+    var doubleFlag = (flashData[addr + 2] & 0x01) == 0x01;
+    var step100Flag = (flashData[addr + 2] & 0x02) == 0x02;
 
-    // if ((typeof deviceInfo.mouseCfg.sensor.cfg.values !== "undefined") &&
-    //     (deviceInfo.mouseCfg.sensor.cfg.values !== null)) {
+    if ((typeof deviceInfo.mouseCfg.sensor.cfg.values !== "undefined") &&
+        (deviceInfo.mouseCfg.sensor.cfg.values !== null)) {
 
-    //   for(var index = 0;index < deviceInfo.mouseCfg.sensor.cfg.values.length;index++) {
-    //     if(deviceInfo.mouseCfg.sensor.cfg.values[index] == value) {
-    //       break;
-    //     }
-    //   }
+      for(var index = 0;index < deviceInfo.mouseCfg.sensor.cfg.values.length;index++) {
+        if(deviceInfo.mouseCfg.sensor.cfg.values[index] == value) {
+          break;
+        }
+      }
 
-    //   value = index * deviceInfo.mouseCfg.sensor.cfg.range[0].step +
-    //           deviceInfo.mouseCfg.sensor.cfg.range[0].min;
-    //   console.log("updateMouseDpi",i,index,value);
-    // }
-    // else {
-    //   value = (value + 1) * deviceInfo.mouseCfg.sensor.cfg.range[0].step;
-    // }
+      value = index * deviceInfo.mouseCfg.sensor.cfg.range[0].step +
+              deviceInfo.mouseCfg.sensor.cfg.range[0].min;
+      console.log("updateMouseDpi",i,index,value);
+    }
+    else {
+      value = (value + 1) * deviceInfo.mouseCfg.sensor.cfg.range[0].step;
+    }
 
-    // if(doubleFlag)
-    // {
-    //   value *= 2;
-    // }
+    if(doubleFlag)
+    {
+      value *= 2;
+    }
 
-    // if(step100Flag)
-    // {
-    //   value *= 2;
-    // }
+    if(step100Flag)
+    {
+      value *= 2;
+    }
     
-    deviceInfo.mouseCfg.dpis[i].value = EepromValue_To_DPIValue(flashData[addr],flashData[addr + 2]);
+    deviceInfo.mouseCfg.dpis[i].value = value;
     deviceInfo.mouseCfg.dpis[i].color = UserConvert.Buffer_To_Color(flashData,addr + 0x20);
   }
 }
@@ -1523,13 +1331,7 @@ async function Get_Mouse_FunctionKeys() {
     {
       var addr = i * 4 + 0x60;
       var tmp = (flashData[addr + 1] << 8) + flashData[addr + 2];
-      var value = [flashData[addr].toString(16).toUpperCase(),"0x" + tmp.toString(16).padStart(4, '0'),];
-
-      if(flashData[addr] == MouseKeyFunction.DPILock) {
-        var dpi = EepromValue_To_DPIValue(flashData[addr + 1],flashData[addr + 2]);
-        value = [flashData[addr].toString(16).toUpperCase(),dpi.toString()];
-      }
-
+      var value = [flashData[addr].toString(16),"0x" + tmp.toString(16).padStart(4, '0'),];
       deviceInfo.mouseCfg.keys[i] = value;
 
       var shortCut = {
@@ -1670,7 +1472,6 @@ async function Set_MS_ReportRate(value) {
     }
 
     await Set_Device_Eeprom_Value(MouseEepromAddr.ReportRate, reportRate);
-    deviceInfo.mouseCfg.reportRate = value;
   }
   return flag;
 }
@@ -1684,7 +1485,7 @@ async function Get_MS_ReportRate() {
 async function Set_MS_MaxDPI(value) {
   var flag = await Get_Device_Online_With_Dialog();
 
-  if(flag == true) 
+  if(flag == true)
     await Set_Device_Eeprom_Value(MouseEepromAddr.maxDpiStage, value); 
 
   return flag;
@@ -1694,11 +1495,8 @@ async function Set_MS_MaxDPI(value) {
 async function Set_MS_CurrentDPI(value) {
   var flag = await Get_Device_Online_With_Dialog();
 
-  if(flag == true) {
+  if(flag == true)
     await Set_Device_Eeprom_Value(MouseEepromAddr.CurrentDPI, value); 
-    deviceInfo.mouseCfg.currentDpi = value;
-  }
-
 
   return flag;
 }
@@ -1716,46 +1514,6 @@ async function Set_MS_YSpindown(value) {
   await Set_Device_Eeprom_Value(0x08,value); 
 }
 
-function DPIValue_To_EepromValue(value) {
-  var val = 0;
-
-  var dpiEx = 0x00;
-  var div = 1;
-  var index;
-  for(index = deviceInfo.mouseCfg.sensor.cfg.range.length - 1;index >= 0;index--) {
-    if(value >= deviceInfo.mouseCfg.sensor.cfg.range[index].min) {
-      break;
-    }
-  }
-
-  if(index == 3) {
-    div = 4;
-    dpiEx = 0x33;
-  }
-  else if(index == 1 || index == 2) {
-    div = 2;
-
-    dpiEx = deviceInfo.mouseCfg.sensor.cfg.range[index].DPIex;
-  }
-
-  val = value / div;
-
-  if ((typeof deviceInfo.mouseCfg.sensor.cfg.values !== "undefined") &&
-      (deviceInfo.mouseCfg.sensor.cfg.values !== null)) {
-      index = (val - deviceInfo.mouseCfg.sensor.cfg.range[0].min) / deviceInfo.mouseCfg.sensor.cfg.range[0].step;
-      val = deviceInfo.mouseCfg.sensor.cfg.values[index];
-  }
-  else {
-    val = val / deviceInfo.mouseCfg.sensor.cfg.range[0].step - 1;
-  }
-
-  var temp = {
-    val,
-    dpiEx
-  }
-  return temp;
-}
-
 //设置DPI值，index为哪一个档，value为dpi值
 async function Set_MS_DPIValue(index,value) {
   var flag = await Get_Device_Online_With_Dialog() ;
@@ -1764,46 +1522,46 @@ async function Set_MS_DPIValue(index,value) {
   {
     var addr = MouseEepromAddr.DPIValue + index * 4;
     var data = Uint8Array.of(0x00, 0x00, 0x00, 0x00);
-    // var val = 0;
+    var val = 0;
 
-    // var dpiEx = 0x00;
-    // var div = 1;
-    // var index;
-    // for(index = deviceInfo.mouseCfg.sensor.cfg.range.length - 1;index >= 0;index--) {
-    //   if(value >= deviceInfo.mouseCfg.sensor.cfg.range[index].min) {
-    //     break;
-    //   }
-    // }
+    var dpiEx = 0x00;
+    var div = 1;
+    var index;
+    for(index = deviceInfo.mouseCfg.sensor.cfg.range.length - 1;index >= 0;index--) {
+      if(value >= deviceInfo.mouseCfg.sensor.cfg.range[index].min) {
+        break;
+      }
+    }
 
-    // if(index == 3) {
-    //   div = 4;
-    //   dpiEx = 0x33;
-    // }
-    // else if(index == 1 || index == 2) {
-    //   div = 2;
+    if(index == 3) {
+      div = 4;
+      dpiEx = 0x33;
+    }
+    else if(index == 1 || index == 2) {
+      div = 2;
 
-    //   dpiEx = deviceInfo.mouseCfg.sensor.cfg.range[index].DPIex;
-    // }
+      dpiEx = deviceInfo.mouseCfg.sensor.cfg.range[index].DPIex;
+    }
 
-    // val = value / div;
+    val = value / div;
 
-    // if ((typeof deviceInfo.mouseCfg.sensor.cfg.values !== "undefined") &&
-    //     (deviceInfo.mouseCfg.sensor.cfg.values !== null)) {
-    //     index = (val - deviceInfo.mouseCfg.sensor.cfg.range[0].min) / deviceInfo.mouseCfg.sensor.cfg.range[0].step;
-    //     val = deviceInfo.mouseCfg.sensor.cfg.values[index];
-    // }
-    // else {
-    //   val = val / deviceInfo.mouseCfg.sensor.cfg.range[0].step - 1;
-    // }
-    var temp = DPIValue_To_EepromValue(value);
-    data[0] = temp.val;
-    data[1] = temp.val;
-    var high = (temp.val) >> 8;
+    if ((typeof deviceInfo.mouseCfg.sensor.cfg.values !== "undefined") &&
+        (deviceInfo.mouseCfg.sensor.cfg.values !== null)) {
+        index = (val - deviceInfo.mouseCfg.sensor.cfg.range[0].min) / deviceInfo.mouseCfg.sensor.cfg.range[0].step;
+        val = deviceInfo.mouseCfg.sensor.cfg.values[index];
+    }
+    else {
+      val = val / deviceInfo.mouseCfg.sensor.cfg.range[0].step - 1;
+    }
+    
+    data[0] = val;
+    data[1] = val;
+    var high = (val) >> 8;
     data[2] = (high << 2) | (high << 6);
-    data[2] |= temp.dpiEx;
+    data[2] |= dpiEx;
 
     data[3] = get_Crc(data);
-    console.log("Set_MS_DPIValue:",value,temp);
+    console.log("Set_MS_DPIValue:",value,div,val,data);
     await Set_Device_Eeprom_Array(addr,data); 
   }
 
@@ -2206,18 +1964,9 @@ async function Set_MS_KeyFunction(index,keyFunction) {
     var addr = MouseEepromAddr.KeyFunction + index * 4;
     let data = Uint8Array.of(0x08, 0x00, 0x00, 0x00); // 示例数据 
     data[0] = keyFunction.type;
-    if(keyFunction.type == MouseKeyFunction.DPILock) {
-      var temp = DPIValue_To_EepromValue(keyFunction.param);
-      data[1] = temp.val;
-      data[2] = 0x00;
-      data[3] = get_Crc(data);
-    }
-    else {
-      data[1] = keyFunction.param >> 8;
-      data[2] = keyFunction.param & 0xFF;
-      data[3] = get_Crc(data);
-    }
-
+    data[1] = keyFunction.param >> 8;
+    data[2] = keyFunction.param & 0xFF;
+    data[3] = get_Crc(data);
     await Set_Device_Eeprom_Array(addr,data);
     var keyValue = [keyFunction.type.toString(16),"0x" + keyFunction.param.toString(16).padStart(4, '0')];
     deviceInfo.mouseCfg.keys[index] = keyValue;
@@ -2506,7 +2255,7 @@ async function Get_MS_MacroContext(index) {
   await Get_Device_Eeprom_Buffer(addr, 10);
 
   var count = flashData[addr];
-  if(count >= 2) {
+  if(count > 2) {
     var start = 10;
     var end = count * 5 + 2;
 
@@ -2571,17 +2320,9 @@ export default {
   Device_Connect,
 
   /*
-  Get_HistoryDevicesInfo();
-  Get historyDevicesInfo
-  parameter：null
-  returns:historyDevicesInfo
-  */
-  Get_HistoryDevicesInfo,
-
-  /*
-  Device_Reconnect(temp);
+  Device_Reconnect();
   Device reconnect
-  parameter：temp
+  parameter：null
   returns:null
   */
   Device_Reconnect,
@@ -2896,8 +2637,8 @@ export default {
   Set_MS_DPILightMode(value);
   Set mouse dpi light mode
   parameter：
-  1:Steady
-  2:Breathing
+  1:Steady（speed √，brightness ×）
+  2:Breathing（speed ×，brightness √）
   var value = 1;
 
   returns:
@@ -2937,7 +2678,7 @@ export default {
   /*
   Set_MS_DPILightOff();
   Set mouse dpi light off
-
+  speed ×，brightness ×
   returns:
   false:device offline
   true: device online
