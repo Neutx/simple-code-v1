@@ -22,6 +22,9 @@ Vue.prototype.$bus = new Vue()
 
 Vue.config.productionTip = false
 
+// Initialize settings from localStorage on app startup
+store.dispatch('settings/loadSettingsFromLocalStorage')
+
 // Wait for Firebase auth to initialize before mounting the app
 let app
 const auth = getAuth()

@@ -10,9 +10,16 @@
 
 <script>
 import { mapGetters } from 'vuex'
+import HIDHandle from '@/assets/js/HIDHandle'
 
 export default {
   name: 'HomeView',
+  data() {
+    return {
+      realTimeTimer: null,
+      silentMonitoringTimer: null
+    }
+  },
   computed: {
     ...mapGetters('device', ['isConnected', 'deviceInfo', 'battery']),
     ...mapGetters('settings', ['dpiSettings', 'pollingRate', 'rgbSettings', 'sensorSettings'])
@@ -25,8 +32,20 @@ export default {
     }
   },
 
+  beforeDestroy() {
+    this.stopRealTimeMonitoring();
+    this.stopRealTimeMonitoringWithoutLogging();
+  },
+
   methods: {
+    stopRealTimeMonitoring() {
+      if (this.realTimeTimer) {
+        clearInterval(this.realTimeTimer);
+        this.realTimeTimer = null;
+      }
+    },
     startRealTimeMonitoring() {
+      this.stopRealTimeMonitoring();
       // Update device info reference every 500ms for real-time updates
       this.realTimeTimer = setInterval(() => {
         if (HIDHandle.deviceInfo.deviceOpen) {
@@ -42,20 +61,20 @@ export default {
       }
       return 0
     },
-    logDeviceStatus() {
-      const status = {
-        timestamp: new Date().toISOString(),
-        model: this.deviceModel,
-        dpi: this.currentDPI,
-        pollingRate: this.pollingRate + 'Hz',
-        battery: this.batteryLevel + '%',
-        lod: this.liftOffDistance,
-        motionSync: this.motionSync ? 'ON' : 'OFF',
-        online: this.deviceInfo.online ? 'CONNECTED' : 'OFFLINE',
-        connectState: this.deviceInfo.connectState
+    stopRealTimeMonitoringWithoutLogging() {
+      if (this.silentMonitoringTimer) {
+        clearInterval(this.silentMonitoringTimer)
+        this.silentMonitoringTimer = null
       }
-      
-      console.log('📊 REAL-TIME DEVICE STATUS:', status)
+    },
+    // Real-time status monitoring
+    startRealTimeMonitoringWithoutLogging() {
+      this.stopRealTimeMonitoringWithoutLogging()
+      this.silentMonitoringTimer = setInterval(() => {
+        if (HIDHandle.deviceInfo.deviceOpen && HIDHandle.deviceInfo.connectState === 2) {
+          // Monitor device status without logging
+        }
+      }, 1000);
     }
   }
 }

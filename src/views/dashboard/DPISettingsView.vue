@@ -64,13 +64,20 @@ export default {
   methods: {
     handleDPIChange(dpiIndex) {
       this.activeDPI = dpiIndex
-      // Here you would typically update the store or send to device
-      console.log('DPI changed to index:', dpiIndex)
+      this.$emit('dpi-changed', dpiIndex)
     },
     
     getDeviceNameFromCidMid(cid, mid) {
       // Device identification logic
-      console.log('CID:', cid, 'MID:', mid)
+      // TODO: Implement device identification logic based on cid/mid
+      // For now, return default until implementation is complete
+       return 'Ikarus'
+    },
+    
+    getDeviceInfo() {
+      const cid = this.deviceInfo.info?.cid || 0
+      const mid = this.deviceInfo.info?.mid || 0
+      return { cid, mid }
     }
   }
 }
