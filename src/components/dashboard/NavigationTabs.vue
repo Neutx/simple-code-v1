@@ -9,7 +9,7 @@
     >
       <!-- Handle SVG files -->
       <img 
-        v-if="tab.icon.startsWith('/')" 
+        v-if="!tab.icon.includes(':')" 
         :src="tab.icon" 
         :alt="tab.label"
         class="tab-icon"
@@ -49,7 +49,7 @@ export default {
           id: 'dpi',
           label: 'DPI settings',
           shortLabel: 'DPI',
-          icon: '/icons/dpi.svg'
+          icon: `${process.env.BASE_URL}icons/DPI.svg`
         },
         {
           id: 'keys',

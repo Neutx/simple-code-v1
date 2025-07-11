@@ -1,5 +1,18 @@
 {
   "projects": {
     "default": "hub-kreo"
-  }
+  },
+  "targets": {
+    "hub-kreo": {
+      "hosting": {
+        "kontrol": [
+          "kontrol-kreo"
+        ],
+        "hub": [
+          "hub-kreo"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

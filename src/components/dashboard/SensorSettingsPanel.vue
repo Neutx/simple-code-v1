@@ -20,9 +20,12 @@
               <button
                 v-for="mode in sensorModes"
                 :key="mode.id"
-                :class="['option-btn', { active: activeSensorMode === mode.id }]"
+                :class="['option-btn', { 
+                  active: activeSensorMode === mode.id,
+                  disabled: !isDeviceConnected || !isSensorModeSelectable(mode.id)
+                }]"
                 @click="handleSensorModeClick(mode.id)"
-                :disabled="!isDeviceConnected"
+                :disabled="!isDeviceConnected || !isSensorModeSelectable(mode.id)"
               >
                 {{ mode.label }}
               </button>
@@ -63,8 +66,8 @@
           <div class="setting-row">
             <span class="setting-label">Sleep timer</span>
             <div class="dropdown-container" @click="toggleSleepDropdown">
-              <span class="dropdown-value">{{ sleepTimer }} mins</span>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" class="dropdown-icon" :class="{ rotated: sleepDropdownOpen }">
+              <span class="dropdown-value">{{ sleepTimer }}</span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" class="dropdown-icon" :class="{ rotated: sleepDropdownOpen }">
                 <path d="M7 10L12 15L17 10" stroke="#D4D4D8" stroke-width="1.5" />
               </svg>
             </div>
@@ -72,12 +75,12 @@
             <transition name="sleep-dropdown">
               <div v-if="sleepDropdownOpen" class="sleep-dropdown-options">
                 <div 
-                  v-for="(minutes, index) in sleepTimerSteps" 
-                  :key="minutes"
+                  v-for="(timerStep, index) in sleepTimerSteps" 
+                  :key="timerStep.value"
                   class="sleep-dropdown-option"
                   @click.stop="selectSleepTimer(index)"
                 >
-                  {{ minutes }} mins
+                  {{ formatSleepTimerOption(timerStep) }}
                 </div>
               </div>
             </transition>
@@ -135,6 +138,7 @@
 
 <script>
 import HIDHandle from '@/assets/js/HIDHandle'
+import { mapGetters, mapActions } from 'vuex'
 
 export default {
   name: 'SensorSettingsPanel',
@@ -143,75 +147,232 @@ export default {
       // Device info reference for real-time monitoring
       deviceInfo: HIDHandle.deviceInfo,
       
-      // Sensor mode buttons
-      sensorModes: [
-        { id: 1, label: 'High Power' },
-        { id: 2, label: 'Low Power' },
-        { id: 3, label: 'Corded' }
-      ],
-      activeSensorMode: 1,
-
-      // Lift-off distance options
-      liftOffOptions: [
-        { id: 1, label: '0.7mm', value: 0.7 },
-        { id: 2, label: '1mm', value: 1.0 },
-        { id: 3, label: '2mm', value: 2.0 }
-      ],
-      activeLiftOff: 1,
-
-      // Toggle switches
-      toggles: [
-        { id: 'ripple', label: 'Ripple control', model: false },
-        { id: 'angle', label: 'Angle snap', model: false },
-        { id: 'motion', label: 'Motion sync', model: false }
-      ],
-
-      // Sleep timer value in minutes
-      sleepTimerSteps: [1, 2, 5, 10, 15, 30],
-      sleepTimerIndex: 2, // default 5 mins
+      // Sleep timer dropdown state
       sleepDropdownOpen: false,
-
-      // Polling rates (Hz)
-      pollingRates: [125, 500, 1000, 2000, 4000],
-      pollingIndex: 0, // Default to 125Hz
       
       // Flag to prevent infinite loops during sync
-      isUpdatingFromDevice: false
+      isUpdatingFromDevice: false,
+      isUpdatingFromVuex: false
     }
   },
   computed: {
-    activePollingRate() {
-      return this.pollingRates[this.pollingIndex]
+    ...mapGetters('settings', [
+      'sensorMode',
+      'sensorLOD', 
+      'sensorPerformanceState',
+      'sensorPerformance',
+      'sensorRipple',
+      'sensorAngle',
+      'sensorMotionSync',
+      'sensorPollingRate',
+      'sensorSleepTimer',
+      'isWiredDevice',
+      'isCorderMode'
+    ]),
+      
+      // Sensor mode buttons
+    sensorModes() {
+      return [
+        { id: 0, label: 'Low Power' },
+        { id: 1, label: 'High Power' },
+        { id: 256, label: 'Corded' }
+      ]
     },
+
+    // Current active sensor mode from Vuex
+    activeSensorMode() {
+      return this.sensorMode
+    },
+
+      // Lift-off distance options
+    liftOffOptions() {
+      return [
+        { id: 1, label: '1mm', value: 1.0 },
+        { id: 2, label: '2mm', value: 2.0 }
+      ]
+    },
+
+    // Current active lift-off distance from Vuex
+    activeLiftOff() {
+      return this.sensorLOD
+    },
+
+    // Toggle switches with Vuex state
+    toggles() {
+      return [
+        { id: 'ripple', label: 'Ripple control', model: this.sensorRipple },
+        { id: 'angle', label: 'Angle snap', model: this.sensorAngle },
+        { id: 'motion', label: 'Motion sync', model: this.sensorMotionSync }
+      ]
+    },
+
+    // Sleep timer value mapping (based on OtherSetting.vue)
+    sleepTimerSteps() {
+      return [
+        { display: 0.17, value: 1, label: '10 sec' },   // 10sec
+        { display: 0.5, value: 3, label: '30 sec' },    // 30sec  
+        { display: 1, value: 6, label: '1 min' },       // 1min
+        { display: 2, value: 12, label: '2 mins' },     // 2min
+        { display: 5, value: 30, label: '5 mins' },     // 5min
+        { display: 10, value: 60, label: '10 mins' },   // 10min
+        { display: 15, value: 90, label: '15 mins' },   // 15min
+        { display: 20, value: 120, label: '20 mins' },  // 20min (estimated)
+        { display: 25, value: 150, label: '25 mins' },  // 25min (estimated)
+        { display: 30, value: 180, label: '30 mins' },  // 30min (estimated)
+        { display: 35, value: 210, label: '35 mins' },  // 35min (estimated)
+        { display: 40, value: 240, label: '40 mins' }   // 40min (estimated)
+      ]
+    },
+
+    // Current sleep timer index from Vuex
+    sleepTimerIndex() {
+      return this.sleepTimerSteps.findIndex(step => step.value === this.sensorSleepTimer) || 2
+    },
+
+      // Polling rates (Hz)
+    pollingRates() {
+      return [125, 500, 1000, 2000, 4000]
+    },
+
+    // Current polling rate index from Vuex
+    pollingIndex() {
+      return this.pollingRates.indexOf(this.sensorPollingRate) || 2
+    },
+
+    activePollingRate() {
+      return this.sensorPollingRate
+    },
+
     fillPercent() {
       return (this.pollingIndex / (this.pollingRates.length - 1)) * 100
     },
+
     sleepTimer() {
-      return this.sleepTimerSteps[this.sleepTimerIndex]
+      const timerStep = this.sleepTimerSteps[this.sleepTimerIndex]
+      return timerStep ? timerStep.label : '1 min'
     },
+
     isDeviceConnected() {
       return this.deviceInfo.deviceOpen && this.deviceInfo.connectState === 2
+    },
+
+    // Check if current polling rate requires corded mode
+    isHighPollingRate() {
+      return this.activePollingRate >= 2000
+    },
+
+    // Get available sensor modes based on polling rate
+    availableSensorModes() {
+      if (this.isHighPollingRate) {
+        // Only Corded mode available for 2000Hz and 4000Hz
+        return [{ id: 256, label: 'Corded' }]
+      } else {
+        // Low Power and High Power available for rates below 2000Hz
+        return [
+          { id: 0, label: 'Low Power' },
+          { id: 1, label: 'High Power' }
+        ]
+      }
+    },
+
+    // Check if a sensor mode is selectable
+    isSensorModeSelectable() {
+      return (modeId) => {
+        return this.availableSensorModes.some(mode => mode.id === modeId)
+      }
     }
   },
   
   mounted() {
-    // Initialize settings from connected device
+    // Initialize settings from Vuex store first
+    this.initializeFromVuex()
+    
+    // CRITICAL: Add a small delay to ensure Vuex is fully initialized
+    this.$nextTick(() => {
+      // Then sync with connected device
     this.initializeFromDevice()
     
     // Start monitoring device changes
     this.startDeviceMonitoring()
-    
-    if (this.isDeviceConnected) {
-      console.log("🔧 Sensor settings panel initialized")
-    }
+    })
   },
   
   beforeDestroy() {
     // Clean up any timers if needed
-    console.log("🔧 Sensor settings panel disconnected")
   },
   
   watch: {
+    // Watch Vuex state changes and sync to device
+    sensorMode(newMode, oldMode) {
+      if (!this.isUpdatingFromVuex && this.isDeviceConnected && oldMode !== undefined) {
+        this.syncModeToDevice(newMode)
+      }
+      // Auto-save to localStorage when settings change
+      if (oldMode !== undefined) {
+        this.saveSettingsToLocalStorage()
+      }
+    },
+    
+    sensorLOD(newLOD, oldLOD) {
+      if (!this.isUpdatingFromVuex && this.isDeviceConnected && oldLOD !== undefined) {
+        this.syncLODToDevice(newLOD)
+      }
+      // Auto-save to localStorage when settings change
+      if (oldLOD !== undefined) {
+        this.saveSettingsToLocalStorage()
+      }
+    },
+    
+    sensorPollingRate(newRate, oldRate) {
+      if (!this.isUpdatingFromVuex && this.isDeviceConnected && oldRate !== undefined) {
+        this.syncPollingRateToDevice(newRate)
+      }
+      // Auto-save to localStorage when settings change
+      if (oldRate !== undefined) {
+        this.saveSettingsToLocalStorage()
+      }
+    },
+    
+    sensorRipple(newVal, oldVal) {
+      if (!this.isUpdatingFromVuex && this.isDeviceConnected && oldVal !== undefined) {
+        this.syncRippleToDevice(newVal)
+      }
+      // Auto-save to localStorage when settings change
+      if (oldVal !== undefined) {
+        this.saveSettingsToLocalStorage()
+      }
+    },
+    
+    sensorAngle(newVal, oldVal) {
+      if (!this.isUpdatingFromVuex && this.isDeviceConnected && oldVal !== undefined) {
+        this.syncAngleToDevice(newVal)
+      }
+      // Auto-save to localStorage when settings change
+      if (oldVal !== undefined) {
+        this.saveSettingsToLocalStorage()
+      }
+    },
+    
+    sensorMotionSync(newVal, oldVal) {
+      if (!this.isUpdatingFromVuex && this.isDeviceConnected && oldVal !== undefined) {
+        this.syncMotionSyncToDevice(newVal)
+      }
+      // Auto-save to localStorage when settings change
+      if (oldVal !== undefined) {
+        this.saveSettingsToLocalStorage()
+      }
+    },
+    
+    sensorSleepTimer(newTimer, oldTimer) {
+      if (!this.isUpdatingFromVuex && this.isDeviceConnected && oldTimer !== undefined) {
+        this.syncSleepTimerToDevice(newTimer)
+      }
+      // Auto-save to localStorage when settings change
+      if (oldTimer !== undefined) {
+        this.saveSettingsToLocalStorage()
+      }
+    },
+
     // Monitor device connection changes
     'deviceInfo.deviceOpen'(newVal) {
       if (newVal) {
@@ -219,273 +380,337 @@ export default {
       }
     },
     
-    // Monitor device info changes for real-time sync
+    // Monitor device info changes for real-time sync from device to Vuex
     'deviceInfo.mouseCfg.sensor': {
       handler() {
+        // CRITICAL: Never override persisted settings
+        const hasPersistedSettings = localStorage.getItem('kreo_sensor_settings')
+        if (hasPersistedSettings) {
+          return
+        }
+        
+        // Only sync from device if we don't have persisted settings and we're not updating from device
         if (!this.isUpdatingFromDevice && this.isDeviceConnected) {
-          this.syncFromDevice()
+          this.syncFromDeviceToVuex()
         }
       },
       deep: true
     },
     
     'deviceInfo.mouseCfg.reportRate'(newRate) {
+      // CRITICAL: Never override persisted settings
+      const hasPersistedSettings = localStorage.getItem('kreo_sensor_settings')
+      if (hasPersistedSettings) {
+        return
+      }
+      
+      // Only sync polling rate if we don't have persisted settings
       if (!this.isUpdatingFromDevice && this.isDeviceConnected) {
-        const rateIndex = this.pollingRates.indexOf(newRate)
-        if (rateIndex !== -1) {
-          this.pollingIndex = rateIndex
-        }
+        this.setSensorPollingRate(newRate)
       }
-    },
-    
-    // Watch UI changes and send to device (backup watchers - direct handlers are primary)
-    activeSensorMode(newMode, oldMode) {
-      if (!this.isUpdatingFromDevice && this.isDeviceConnected && oldMode !== undefined) {
-        this.setSensorMode(newMode)
-      }
-    },
-    
-    activeLiftOff(newLOD, oldLOD) {
-      if (!this.isUpdatingFromDevice && this.isDeviceConnected && oldLOD !== undefined) {
-        this.setLiftOffDistance(newLOD)
-      }
-    },
-    
-    pollingIndex(newIndex, oldIndex) {
-      if (!this.isUpdatingFromDevice && this.isDeviceConnected && oldIndex !== undefined) {
-        this.setPollingRate(newIndex)
-      }
-    },
-    
-    // Watch toggle changes
-    toggles: {
-      handler(newToggles, oldToggles) {
-        if (!this.isUpdatingFromDevice && this.isDeviceConnected && oldToggles) {
-          newToggles.forEach((toggle, index) => {
-            const oldToggle = oldToggles[index]
-            if (oldToggle && toggle.model !== oldToggle.model) {
-              this.setToggleSetting(toggle.id, toggle.model)
-            }
-          })
-        }
-      },
-      deep: true
     }
   },
   
   methods: {
+    ...mapActions('settings', [
+      'setSensorMode',
+      'setSensorLOD',
+      'setSensorPerformanceState',
+      'setSensorPerformance',
+      'setSensorRipple',
+      'setSensorAngle',
+      'setSensorMotionSync',
+      'setSensorPollingRate',
+      'setSensorSleepTimer',
+      'setWiredDevice',
+      'setCorderMode',
+      'updateSensorSettings',
+      'initializeSensorSettingsFromDevice',
+      'resetSensorSettings',
+      'saveSettingsToLocalStorage'
+    ]),
+
+    // Initialize from Vuex store
+    initializeFromVuex() {
+      // Settings are already available through computed properties
+      // CRITICAL: If we have persisted settings and device is connected, apply them immediately
+      const storedSettings = localStorage.getItem('kreo_sensor_settings')
+      if (storedSettings && this.isDeviceConnected) {
+        this.$nextTick(() => {
+          this.applyVuexSettingsToDevice()
+        })
+      }
+    },
+
     async initializeFromDevice() {
       if (!this.isDeviceConnected) return
       
       this.isUpdatingFromDevice = true
       
       try {
-        // Initialize from current device state
-        this.syncFromDevice()
+        // CRITICAL: Always check for persisted settings first
+        const hasPersistedSettings = localStorage.getItem('kreo_sensor_settings')
+        
+        if (hasPersistedSettings) {
+          // We have persisted settings - apply them to device instead of reading from device
+          await this.applyVuexSettingsToDevice()
+          
+          // Force save to ensure localStorage is up to date
+          await this.saveSettingsToLocalStorage()
+        } else {
+          // No persisted settings - initialize Vuex from device
+          await this.initializeSensorSettingsFromDevice(this.deviceInfo)
+          
+          // Save current state to localStorage
+          await this.saveSettingsToLocalStorage()
+        }
+        
       } catch (error) {
-        console.error("❌ Failed to initialize sensor settings from device:", error)
+        console.error('Error initializing from device:', error)
       } finally {
         this.isUpdatingFromDevice = false
       }
     },
     
-    syncFromDevice() {
+    // Apply current Vuex settings to the device (when we have persisted settings)
+    async applyVuexSettingsToDevice() {
+      if (!this.isDeviceConnected) return
+      
+      try {
+        // Apply all current Vuex settings to device
+        await HIDHandle.Set_MS_SensorMode(this.sensorMode)
+        await HIDHandle.Set_MS_LOD(this.sensorLOD)
+        await HIDHandle.Set_MS_ReportRate(this.sensorPollingRate)
+        await HIDHandle.Set_MS_Ripple(this.sensorRipple ? 1 : 0)
+        await HIDHandle.Set_MS_Angle(this.sensorAngle ? 1 : 0)
+        await HIDHandle.Set_MS_MotionSync(this.sensorMotionSync ? 1 : 0)
+        await HIDHandle.Set_MS_LightOffTime(this.sensorSleepTimer)
+        
+        // Update UI
+        this.$bus.$emit("updateMouseUI", this.deviceInfo.mouseCfg)
+        
+      } catch (error) {
+        console.error('Error applying Vuex settings to device:', error)
+      }
+    },
+
+    // Start monitoring device changes
+    startDeviceMonitoring() {
+      // Device monitoring is handled by Vue watchers
+      // This method can be used for additional monitoring if needed
+    },
+
+    // Sync from device to Vuex
+    syncFromDeviceToVuex() {
+      if (!this.isDeviceConnected) return
+      
+      // CRITICAL: Never override persisted settings
+      const hasPersistedSettings = localStorage.getItem('kreo_sensor_settings')
+      if (hasPersistedSettings) {
+        return
+      }
+      
+      this.isUpdatingFromDevice = true
+      
+      try {
       const sensor = this.deviceInfo.mouseCfg.sensor
       const reportRate = this.deviceInfo.mouseCfg.reportRate
       
-      // Sync sensor mode
-      if (sensor.sensorMode !== undefined) {
-        this.activeSensorMode = sensor.sensorMode || 1
-      }
-      
-      // Sync lift-off distance
-      if (sensor.lod !== undefined) {
-        const lodOption = this.liftOffOptions.find(opt => opt.value === sensor.lod)
-        if (lodOption) {
-          this.activeLiftOff = lodOption.id
+        // Update Vuex store with device values
+        if (sensor.sensorMode !== undefined && sensor.sensorMode !== this.sensorMode) {
+          this.setSensorMode(sensor.sensorMode)
         }
-      }
-      
-      // Sync polling rate
-      if (reportRate !== undefined) {
-        const rateIndex = this.pollingRates.indexOf(reportRate)
-        if (rateIndex !== -1) {
-          this.pollingIndex = rateIndex
+        
+        if (sensor.lod !== undefined && sensor.lod !== this.sensorLOD) {
+          this.setSensorLOD(sensor.lod)
         }
-      }
-      
-      // Sync toggles
-      this.toggles.forEach(toggle => {
-        switch (toggle.id) {
-          case 'ripple':
-            toggle.model = sensor.ripple || false
-            break
-          case 'angle':
-            toggle.model = sensor.angle || false
-            break
-          case 'motion':
-            toggle.model = sensor.motionSync || false
-            break
+        
+        if (reportRate !== undefined && reportRate !== this.sensorPollingRate) {
+          this.setSensorPollingRate(reportRate)
         }
-      })
+        
+        if (sensor.ripple !== undefined && Boolean(sensor.ripple) !== this.sensorRipple) {
+          this.setSensorRipple(Boolean(sensor.ripple))
+        }
+        
+        if (sensor.angle !== undefined && Boolean(sensor.angle) !== this.sensorAngle) {
+          this.setSensorAngle(Boolean(sensor.angle))
+        }
+        
+        if (sensor.motionSync !== undefined && Boolean(sensor.motionSync) !== this.sensorMotionSync) {
+          this.setSensorMotionSync(Boolean(sensor.motionSync))
+        }
+        
+        if (sensor.performance !== undefined && sensor.performance !== this.sensorSleepTimer) {
+          this.setSensorSleepTimer(sensor.performance)
+        }
+        
+        // Save to localStorage after sync
+        this.saveSettingsToLocalStorage()
+        
+      } catch (error) {
+        console.error('Error syncing from device to Vuex:', error)
+      } finally {
+        this.isUpdatingFromDevice = false
+      }
     },
-    
-    async setSensorMode(mode) {
+
+    // Sync individual settings to device
+    async syncModeToDevice(mode) {
       if (!this.isDeviceConnected) return
       
       try {
         await HIDHandle.Set_MS_SensorMode(mode)
-        console.log("🔧 Sensor mode set to:", mode)
         this.$bus.$emit("updateMouseUI", this.deviceInfo.mouseCfg)
       } catch (error) {
-        console.error("❌ Failed to set sensor mode:", error)
-        // Revert on error
-        this.isUpdatingFromDevice = true
-        this.activeSensorMode = this.deviceInfo.mouseCfg.sensor.sensorMode || 1
-        this.isUpdatingFromDevice = false
+        console.error('Error syncing sensor mode to device:', error)
       }
     },
-    
-    async setLiftOffDistance(lodId) {
+
+    async syncLODToDevice(lod) {
       if (!this.isDeviceConnected) return
       
-      const lodOption = this.liftOffOptions.find(opt => opt.id === lodId)
-      if (!lodOption) return
-      
       try {
-        await HIDHandle.Set_MS_LOD(lodOption.value)
-        console.log("📏 Lift-off distance set to:", lodOption.label)
+        await HIDHandle.Set_MS_LOD(lod)
         this.$bus.$emit("updateMouseUI", this.deviceInfo.mouseCfg)
       } catch (error) {
-        console.error("❌ Failed to set lift-off distance:", error)
-        // Revert on error
-        this.isUpdatingFromDevice = true
-        this.syncFromDevice()
-        this.isUpdatingFromDevice = false
+        console.error('Error syncing LOD to device:', error)
       }
     },
-    
-    async setPollingRate(index) {
+
+    async syncPollingRateToDevice(rate) {
+      if (!this.isDeviceConnected) return
+      
+      try {
+        await HIDHandle.Set_MS_ReportRate(rate)
+        this.$bus.$emit("updateMouseUI", this.deviceInfo.mouseCfg)
+        this.$bus.$emit("pollingRateChanged", rate)
+      } catch (error) {
+        console.error('Error syncing polling rate to device:', error)
+      }
+    },
+
+    async syncRippleToDevice(enabled) {
+      if (!this.isDeviceConnected) return
+      
+      try {
+        await HIDHandle.Set_MS_Ripple(enabled ? 1 : 0)
+        this.$bus.$emit("updateMouseUI", this.deviceInfo.mouseCfg)
+      } catch (error) {
+        console.error('Error syncing ripple to device:', error)
+      }
+    },
+
+    async syncAngleToDevice(enabled) {
+      if (!this.isDeviceConnected) return
+      
+      try {
+        await HIDHandle.Set_MS_Angle(enabled ? 1 : 0)
+        this.$bus.$emit("updateMouseUI", this.deviceInfo.mouseCfg)
+      } catch (error) {
+        console.error('Error syncing angle to device:', error)
+      }
+    },
+
+    async syncMotionSyncToDevice(enabled) {
+      if (!this.isDeviceConnected) return
+      
+      try {
+        await HIDHandle.Set_MS_MotionSync(enabled ? 1 : 0)
+        this.$bus.$emit("updateMouseUI", this.deviceInfo.mouseCfg)
+      } catch (error) {
+        console.error('Error syncing motion sync to device:', error)
+      }
+    },
+
+    async syncSleepTimerToDevice(timer) {
+      if (!this.isDeviceConnected) return
+      
+      try {
+        await HIDHandle.Set_MS_LightOffTime(timer)
+        this.$bus.$emit("updateMouseUI", this.deviceInfo.mouseCfg)
+      } catch (error) {
+        console.error('Error syncing sleep timer to device:', error)
+      }
+    },
+
+    // UI event handlers - these now update Vuex state
+    handleSensorModeClick(mode) {
+      if (!this.isDeviceConnected || !this.isSensorModeSelectable(mode)) return
+      
+      this.setSensorMode(mode)
+    },
+
+    handleLiftOffClick(lodId) {
+      if (!this.isDeviceConnected) return
+      
+      this.setSensorLOD(lodId)
+    },
+
+    handleToggleClick(toggleId) {
+      if (!this.isDeviceConnected) return
+      
+      switch (toggleId) {
+        case 'ripple':
+          this.setSensorRipple(!this.sensorRipple)
+          break
+        case 'angle':
+          this.setSensorAngle(!this.sensorAngle)
+          break
+        case 'motion':
+          this.setSensorMotionSync(!this.sensorMotionSync)
+          break
+      }
+    },
+
+    handlePollingRateClick(index) {
       if (!this.isDeviceConnected) return
       
       const rate = this.pollingRates[index]
       if (!rate) return
       
-      try {
-        await HIDHandle.Set_MS_ReportRate(rate)
-        console.log("📡 Polling rate set to:", rate + "Hz")
-        this.$bus.$emit("updateMouseUI", this.deviceInfo.mouseCfg)
-      } catch (error) {
-        console.error("❌ Failed to set polling rate:", error)
-        // Revert on error
-        this.isUpdatingFromDevice = true
-        const currentRate = this.deviceInfo.mouseCfg.reportRate
-        const currentIndex = this.pollingRates.indexOf(currentRate)
-        if (currentIndex !== -1) {
-          this.pollingIndex = currentIndex
-        }
-        this.isUpdatingFromDevice = false
-      }
-    },
-    
-    async setToggleSetting(settingId, value) {
-      if (!this.isDeviceConnected) return
+      this.setSensorPollingRate(rate)
       
-      try {
-        switch (settingId) {
-          case 'ripple':
-            await HIDHandle.Set_MS_Ripple(value)
-            console.log("🌊 Ripple control set to:", value ? "ON" : "OFF")
-            break
-          case 'angle':
-            await HIDHandle.Set_MS_Angle(value)
-            console.log("📐 Angle snap set to:", value ? "ON" : "OFF")
-            break
-          case 'motion':
-            await HIDHandle.Set_MS_MotionSync(value)
-            console.log("🔄 Motion sync set to:", value ? "ON" : "OFF")
-            break
+      // Handle automatic sensor mode switching
+      this.handlePollingRateChange(index)
+    },
+
+    handlePollingRateChange(newIndex) {
+      const newRate = this.pollingRates[newIndex]
+      
+      if (newRate >= 2000) {
+        // Auto-switch to Corded mode for high polling rates
+        if (this.sensorMode !== 256) {
+          this.setSensorMode(256)
         }
-        this.$bus.$emit("updateMouseUI", this.deviceInfo.mouseCfg)
-      } catch (error) {
-        console.error(`❌ Failed to set ${settingId}:`, error)
-        // Revert on error
-        this.isUpdatingFromDevice = true
-        this.syncFromDevice()
-        this.isUpdatingFromDevice = false
-      }
-    },
-    
-    startDeviceMonitoring() {
-      // Real-time monitoring is handled by watchers
-      // This method can be extended for additional monitoring if needed
-    },
-    
-    // Direct handlers as fallback for UI interactions
-    async handleSensorModeClick(mode) {
-      if (this.isDeviceConnected) {
-        this.activeSensorMode = mode
-        await this.setSensorMode(mode)
-      }
-    },
-    
-    async handleLiftOffClick(lodId) {
-      if (this.isDeviceConnected) {
-        this.activeLiftOff = lodId
-        await this.setLiftOffDistance(lodId)
-      }
-    },
-    
-    async handlePollingRateClick(index) {
-      if (this.isDeviceConnected) {
-        this.pollingIndex = index
-        await this.setPollingRate(index)
-      }
-    },
-    
-    async handleToggleClick(toggleId) {
-      if (this.isDeviceConnected) {
-        const toggle = this.toggles.find(t => t.id === toggleId)
-        if (toggle) {
-          toggle.model = !toggle.model
-          await this.setToggleSetting(toggleId, toggle.model)
+      } else {
+        // Auto-switch away from Corded mode for lower polling rates
+        if (this.sensorMode === 256) {
+          this.setSensorMode(0) // Default to Low Power
         }
       }
     },
     
     async resetToDefault() {
-      if (!this.isDeviceConnected) {
-        // If not connected, just reset UI
-      this.activeSensorMode = 1
-      this.activeLiftOff = 1
-      this.toggles.forEach(t => (t.model = false))
-      this.pollingIndex = 0
-      this.sleepTimerIndex = 2
-        return
-      }
+      if (!this.isDeviceConnected) return
       
       try {
-        // Reset all settings to default on device
-        await HIDHandle.Set_MS_SensorMode(1)           // High Power
-        await HIDHandle.Set_MS_LOD(1.0)                // 1mm
-        await HIDHandle.Set_MS_ReportRate(125)         // 125Hz
-        await HIDHandle.Set_MS_Ripple(false)           // Off
-        await HIDHandle.Set_MS_Angle(false)            // Off
-        await HIDHandle.Set_MS_MotionSync(false)       // Off
+        // Reset hardware to defaults
+        await HIDHandle.Set_MS_SensorMode(0)          // Low Power
+        await HIDHandle.Set_MS_LOD(1.0)               // 1mm
+        await HIDHandle.Set_MS_ReportRate(1000)       // 1000Hz
+        await HIDHandle.Set_MS_Ripple(0)              // Off
+        await HIDHandle.Set_MS_Angle(0)               // Off
+        await HIDHandle.Set_MS_MotionSync(1)          // On
+        await HIDHandle.Set_MS_LightOffTime(6)        // 1 min sleep timer
         
-        // Update UI
-        this.isUpdatingFromDevice = true
-        this.activeSensorMode = 1
-        this.activeLiftOff = 2  // 1mm corresponds to id 2
-        this.pollingIndex = 0
-        this.sleepTimerIndex = 2
-        this.toggles.forEach(t => (t.model = false))
-        this.isUpdatingFromDevice = false
+        // Reset Vuex state to defaults
+        await this.resetSensorSettings()
         
-        console.log("🔄 All sensor settings reset to default")
         this.$bus.$emit("updateMouseUI", this.deviceInfo.mouseCfg)
+        
       } catch (error) {
-        console.error("❌ Failed to reset settings:", error)
+        console.error("Failed to reset settings:", error)
       }
     },
     
@@ -493,13 +718,19 @@ export default {
       this.sleepDropdownOpen = !this.sleepDropdownOpen
     },
     
-    selectSleepTimer(index) {
-      this.sleepTimerIndex = index
+    formatSleepTimerOption(timerStep) {
+      return timerStep ? timerStep.label : 'Unknown'
+    },
+
+    async selectSleepTimer(index) {
       this.sleepDropdownOpen = false
-      // Note: Sleep timer functionality would need additional HIDHandle method
-      if (this.isDeviceConnected) {
-        console.log(`🕐 Sleep timer set to ${this.sleepTimer} minutes`)
-      }
+      
+      if (!this.isDeviceConnected) return
+      
+      const timerStep = this.sleepTimerSteps[index]
+      if (!timerStep) return
+      
+      this.setSensorSleepTimer(timerStep.value)
     }
   }
 }
@@ -593,7 +824,7 @@ export default {
 .option-btn {
   flex: 1 1 0;
   padding: 14px 0;
-  border-radius: 20px;
+  border-radius: 12px;
   border: 1.5px solid #a278fd;
   background: transparent;
   color: white;
@@ -608,11 +839,13 @@ export default {
     background: #a278fd33;
   }
   
-  &:disabled {
-    opacity: 0.5;
+  &:disabled,
+  &.disabled {
+    opacity: 0.3;
     cursor: not-allowed;
-    border-color: #666;
-    color: #999;
+    border-color: #444;
+    color: #666;
+    background: transparent !important;
   }
 }
 
@@ -676,17 +909,19 @@ input:checked + .slider:before {
 .dropdown-container {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px;
-  border-radius: 10px;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
   cursor: pointer;
   position: relative;
+  min-width: 80px;
 }
 
 .dropdown-value {
   font-family: 'DM Sans', sans-serif;
-  font-size: 20px;
+  font-size: 16px;
   color: #a278fd;
+  white-space: nowrap;
 }
 
 .dropdown-icon {
@@ -701,35 +936,66 @@ input:checked + .slider:before {
   position: absolute;
   bottom: 100%;
   right: 0;
-  width: 120px;
+  width: 100px;
+  max-height: 280px;
   background: #262626;
-  border-radius: 16px;
+  border-radius: 8px;
   z-index: 10;
-  overflow: hidden;
+  overflow-y: auto;
   margin-bottom: 4px;
   display: flex;
   flex-direction: column;
   transform-origin: bottom center;
   box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.4);
+  
+  /* Custom scrollbar */
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: #1a1a1a;
+    border-radius: 2px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: #a278fd;
+    border-radius: 2px;
+  }
+  
+  &::-webkit-scrollbar-thumb:hover {
+    background: #9266e6;
+  }
 }
 
 .sleep-dropdown-option {
-  height: 56px;
+  height: 32px;
   background: #262626;
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: 'DM Sans', sans-serif;
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 500;
   color: white;
   cursor: pointer;
   transition: background 0.2s ease;
   position: relative;
   overflow: hidden;
+  padding: 0 8px;
 
   &:hover {
     background: #404040;
+  }
+  
+  &:first-child {
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+  }
+  
+  &:last-child {
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
   }
 }
 
@@ -844,7 +1110,7 @@ input:checked + .slider:before {
   width: 320px;
   height: 48px;
   background: #27272a;
-  border-radius: 10px;
+  border-radius: 8px;
   border: none;
   display: flex;
   align-items: center;

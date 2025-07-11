@@ -39,13 +39,13 @@ export default {
   },
   methods: {
     handleKeySelected(key) {
-      console.log('Key selected:', key)
-      // Handle key selection logic here
+      // Handle key selection logic
+      this.$emit('key-selected', key)
     },
     
     handleKeyMappingUpdate(mapping) {
-      console.log('Key mapping updated:', mapping)
-      // Handle key mapping update logic here
+      // Handle key mapping update logic
+      this.$emit('key-mapping-update', mapping)
     }
   }
 }

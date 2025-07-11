@@ -53,6 +53,7 @@
       <!-- Sensor Mouse Display -->
       <div class="sensor-mouse-section" v-if="activeTab === 'sensor'">
         <SensorMouseDisplay 
+          ref="sensorMouseDisplay"
           :device-model="deviceModel" 
           :mouse-image-src="mouseImageSrc"
           :profileCount="4"
@@ -67,16 +68,17 @@
       <SensorSettingsPanel v-if="activeTab === 'sensor'" />
       
       <!-- Key Remapping Mouse Display (only visible in keys mode) -->
-      <div class="key-remapping-mouse-section" v-if="activeTab === 'keys'">
+      <div class="key-remapping-mouse-section" v-if="activeTab === 'keys'" :class="{ 'panel-expanded': isKeyRemappingPanelExpanded }">
         <KeyRemappingMouseDisplay 
           :device-model="deviceModel" 
           :mouse-image-src="mouseImageSrc"
+          :highlighted-key="highlightedKey"
           @key-selected="handleKeySelected"
         />
       </div>
       
       <!-- Key Remapping Panel (only visible in keys mode) -->
-      <KeyRemappingPanel v-if="activeTab === 'keys'" @key-mapping-updated="handleKeyMappingUpdate" />
+      <KeyRemappingPanel v-if="activeTab === 'keys'" @key-mapping-updated="handleKeyMappingUpdate" @panel-state-changed="handlePanelStateChange" />
       
       <!-- RGB Mouse Display -->
       <div class="rgb-mouse-section" v-if="activeTab === 'rgb'">
@@ -155,7 +157,9 @@ export default {
       activeTab: 'home',
       activeDPI: 1, // Default to second profile (1200 DPI)
       deviceInfo: HIDHandle.deviceInfo, // Reactive reference to HIDHandle
-      realTimeTimer: null
+      realTimeTimer: null,
+      isKeyRemappingPanelExpanded: false,
+      highlightedKey: null
     }
   },
   computed: {
@@ -168,46 +172,41 @@ export default {
     },
     
     deviceModel() {
-      // Use HIDHandle directly for device info
-      if (HIDHandle.deviceInfo.info && HIDHandle.deviceInfo.info.cid && HIDHandle.deviceInfo.info.mid) {
-        return this.getDeviceNameFromCidMid(HIDHandle.deviceInfo.info.cid, HIDHandle.deviceInfo.info.mid)
+      // Use reactive deviceInfo for device info
+      if (this.deviceInfo.info && this.deviceInfo.info.cid && this.deviceInfo.info.mid) {
+        return this.getDeviceNameFromCidMid(this.deviceInfo.info.cid, this.deviceInfo.info.mid)
       }
       return 'Ikarus' // Default mouse model
     },
     
     currentDPI() {
-      // Use HIDHandle directly for current DPI
-      const dpiIndex = HIDHandle.deviceInfo.mouseCfg.currentDpi;
-      const dpiValue = HIDHandle.deviceInfo.mouseCfg.dpis[dpiIndex]?.value;
-      console.log("📊 Dashboard DPI:", { dpiIndex, dpiValue, dpis: HIDHandle.deviceInfo.mouseCfg.dpis });
+      // Use reactive deviceInfo for current DPI
+      const dpiIndex = this.deviceInfo?.mouseCfg?.currentDpi;
+      const dpiValue = this.deviceInfo?.mouseCfg?.dpis?.[dpiIndex]?.value;
       return dpiValue || 1600;
     },
     
     batteryLevel() {
-      // Use HIDHandle directly for battery level
-      const level = HIDHandle.deviceInfo.battery.level;
-      console.log("🔋 Dashboard Battery:", level);
+      // Use reactive deviceInfo for battery level
+      const level = this.deviceInfo?.battery?.level;
       return level || 0;
     },
     
     pollingRate() {
-      // Use HIDHandle directly for polling rate
-      const rate = HIDHandle.deviceInfo.mouseCfg.reportRate;
-      console.log("⚡ Dashboard Polling Rate:", rate);
+      // Use HIDHandle directly for polling rate with reactive deviceInfo
+      const rate = this.deviceInfo?.mouseCfg?.reportRate;
       return rate || 1000;
     },
     
     liftOffDistance() {
-      // Use HIDHandle directly for LOD
-      const lod = HIDHandle.deviceInfo.mouseCfg.sensor.lod;
-      console.log("📏 Dashboard LOD:", lod);
+      // Use reactive deviceInfo for LOD
+      const lod = this.deviceInfo?.mouseCfg?.sensor?.lod;
       return lod ? `${lod}MM` : '1MM';
     },
     
     motionSync() {
-      // Use HIDHandle directly for motion sync
-      const sync = HIDHandle.deviceInfo.mouseCfg.sensor.motionSync;
-      console.log("🔄 Dashboard Motion Sync:", sync);
+      // Use reactive deviceInfo for motion sync
+      const sync = this.deviceInfo?.mouseCfg?.sensor?.motionSync;
       return sync || false;
     },
     
@@ -221,21 +220,17 @@ export default {
     if (!this.isConnected && this.$route.path !== '/initialize') {
       this.$router.push('/initialize');
     }
+
+    // Initialize sensor settings from Vuex store
+    this.$store.dispatch('settings/loadSettingsFromLocalStorage');
     
     // Start real-time monitoring for dashboard updates
     this.startRealTimeMonitoring();
     
-    // Log initial dashboard state
-    console.log("🎮 Dashboard mounted with device data:", {
-      connected: HIDHandle.deviceInfo.deviceOpen,
-      connectState: HIDHandle.deviceInfo.connectState,
-      battery: this.batteryLevel + "%",
-      dpi: this.currentDPI,
-      pollingRate: this.pollingRate + "Hz",
-      lod: this.liftOffDistance,
-      motionSync: this.motionSync ? "ON" : "OFF",
-      timestamp: new Date().toISOString()
-    });
+    // Listen for direct sensor mouse display updates
+    this.$bus.$on("updateSensorMouseDisplay", (data) => {
+      this.updateSensorMouseDisplay(data.type, data.value)
+    })
   },
   
   beforeDestroy() {
@@ -243,33 +238,30 @@ export default {
     if (this.realTimeTimer) {
       clearInterval(this.realTimeTimer);
     }
+    // Clean up event listener
+    this.$bus.$off("updateSensorMouseDisplay")
   },
   
   watch: {
     // Watch for device connection changes
     isConnected(newVal) {
       if (!newVal) {
-        console.log("❌ Device disconnected - redirecting to initialize");
         this.$router.push('/initialize');
       }
     },
     
     // Watch HIDHandle deviceInfo for changes
     deviceInfo: {
-      handler(newInfo) {
-        if (newInfo.deviceOpen) {
-          console.log("📊 Dashboard - Device data updated:", {
-            battery: this.batteryLevel + "%",
-            dpi: this.currentDPI,
-            pollingRate: this.pollingRate + "Hz",
-            lod: this.liftOffDistance,
-            motionSync: this.motionSync ? "ON" : "OFF",
-            connectState: newInfo.connectState,
-            timestamp: new Date().toISOString()
-          });
-        }
+      handler() {
+        // Handle device info changes if needed
       },
       deep: true
+    },
+    
+    // Watch specifically for polling rate changes
+    'deviceInfo.mouseCfg.reportRate'() {
+      // Force re-render by updating component key or triggering update
+      this.$forceUpdate()
     }
   },
   
@@ -280,29 +272,16 @@ export default {
         if (HIDHandle.deviceInfo.deviceOpen) {
           // Force reactive update by updating data property
           this.deviceInfo = { ...HIDHandle.deviceInfo };
-          
-          // Log dashboard sync status
-          console.log("🔄 Dashboard sync:", {
-            battery: this.batteryLevel + "%",
-            dpi: this.currentDPI,
-            pollingRate: this.pollingRate + "Hz",
-            online: HIDHandle.deviceInfo.online ? "CONNECTED" : "OFFLINE",
-            timestamp: new Date().toISOString()
-          });
         }
       }, 500);
-      
-      console.log("🔄 Dashboard real-time monitoring started");
     },
     
     handleTabChange(tabId) {
       this.activeTab = tabId
-      console.log('Tab changed to:', tabId)
     },
     
     handleDPIChange(dpiIndex) {
       this.activeDPI = dpiIndex
-      console.log('DPI changed to index:', dpiIndex)
       // Here you would typically update the store or send to device
     },
     
@@ -325,19 +304,20 @@ export default {
       this.$message.info('Profile feature coming soon!')
     },
     
-    handleKeySelected(key) {
-      console.log('Key selected in dashboard:', key)
+    handleKeySelected() {
       // Handle key selection logic here
     },
     
-    handleKeyMappingUpdate(mapping) {
-      console.log('Key mapping updated in dashboard:', mapping)
+    handleKeyMappingUpdate() {
       // Handle key mapping update logic here
+    },
+
+    handlePanelStateChange({ isExpanded, selectedKey }) {
+      this.isKeyRemappingPanelExpanded = isExpanded;
+      this.highlightedKey = selectedKey;
     },
     
     getDeviceNameFromCidMid(cid, mid) {
-      console.log("🔍 Device identification:", { cid, mid });
-      
       // Map known device combinations to names
       const deviceMap = {
         '0_0': 'Unknown Device',
@@ -346,6 +326,17 @@ export default {
       
       const key = `${cid}_${mid}`;
       return deviceMap[key] || 'Ikarus'; // Default to Ikarus
+    },
+    
+    // Method to directly update sensor mouse display
+    updateSensorMouseDisplay(type, value) {
+      if (this.$refs.sensorMouseDisplay) {
+        if (type === 'pollingRate') {
+          this.$refs.sensorMouseDisplay.updatePollingRate(value)
+        } else if (type === 'dpi') {
+          this.$refs.sensorMouseDisplay.updateDPI(value)
+        }
+      }
     }
   }
 }
@@ -477,19 +468,14 @@ export default {
 .key-remapping-mouse-section {
   position: absolute;
   top: 55%;
-  right: 15vw;
-  transform: translateY(-50%);
+  left: 50%;
+  transform: translate(-50%, -50%);
   z-index: 1;
   transition: all 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
-}
 
-.key-remapping-mouse-section {
-  position: absolute;
-  top: 55%;
-  right: 15vw;
-  transform: translateY(-50%);
-  z-index: 1;
-  transition: all 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+  &.panel-expanded {
+    left: calc(50% + 15vw);
+  }
 }
 
 // Responsive breakpoints

@@ -55,107 +55,119 @@ export default {
     },
     batteryLevel() {
       return this.deviceInfo.battery?.level || '69'
+    },
+    isDeviceConnected() {
+      return HIDHandle.deviceInfo.deviceOpen
     }
   },
   methods: {
-    handleLightToggle(enabled) {
-      console.log('🔦 Light toggled:', enabled)
-      // Connect to HIDHandle for RGB light control
-      if (HIDHandle.deviceInfo.deviceOpen) {
-        try {
-          // Toggle light state by calling Set_MS_LightMode with current mode
-          // This function internally handles the state toggle
-          const currentMode = HIDHandle.deviceInfo.mouseCfg.lightEffect?.mode || 0
-          HIDHandle.Set_MS_LightMode(currentMode)
-        } catch (error) {
-          console.error('Failed to toggle light:', error)
-        }
+    async toggleLight(enabled) {
+      if (!this.isDeviceConnected) return
+      
+      try {
+        await HIDHandle.Set_MS_LightState(enabled ? 1 : 0)
+        this.$bus.$emit("updateMouseUI", this.deviceInfo.mouseCfg)
+      } catch (error) {
+        console.error('Failed to toggle light:', error)
       }
+    },
+
+    async changeRGBMode(mode) {
+      if (!this.isDeviceConnected) return
+      
+      try {
+        await HIDHandle.Set_MS_LightMode(mode)
+        this.$bus.$emit("updateMouseUI", this.deviceInfo.mouseCfg)
+      } catch (error) {
+        console.error('Failed to change RGB mode:', error)
+      }
+    },
+
+    async changeBrightness(brightness) {
+      if (!this.isDeviceConnected) return
+      
+      try {
+        await HIDHandle.Set_MS_LightBrightness(brightness)
+        this.$bus.$emit("updateMouseUI", this.deviceInfo.mouseCfg)
+      } catch (error) {
+        console.error('Failed to change brightness:', error)
+      }
+    },
+
+    async changeSpeed(speed) {
+      if (!this.isDeviceConnected) return
+      
+      try {
+        await HIDHandle.Set_MS_LightSpeed(speed)
+        this.$bus.$emit("updateMouseUI", this.deviceInfo.mouseCfg)
+      } catch (error) {
+        console.error('Failed to change speed:', error)
+      }
+    },
+
+    async changeColor(color) {
+      if (!this.isDeviceConnected) return
+      
+      try {
+        const rgb = this.hexToRgb(color)
+        await HIDHandle.Set_MS_LightColor(rgb.r, rgb.g, rgb.b)
+        this.$bus.$emit("updateMouseUI", this.deviceInfo.mouseCfg)
+      } catch (error) {
+        console.error('Failed to change color:', error)
+      }
+    },
+
+    async resetToDefault() {
+      if (!this.isDeviceConnected) return
+      
+      try {
+        await HIDHandle.Set_MS_LightState(1)
+        await HIDHandle.Set_MS_LightMode(0)
+        await HIDHandle.Set_MS_LightBrightness(5)
+        await HIDHandle.Set_MS_LightSpeed(5)
+        await HIDHandle.Set_MS_LightColor(168, 85, 247)
+        this.$bus.$emit("updateMouseUI", this.deviceInfo.mouseCfg)
+      } catch (error) {
+        console.error('Failed to reset RGB settings:', error)
+      }
+    },
+
+    selectProfile(profileIndex) {
+      this.activeProfile = profileIndex
+      this.$emit('profile-selected', profileIndex)
+    },
+
+    handleLightToggle(enabled) {
+      this.toggleLight(enabled)
     },
     
     handleModeChange(mode) {
-      console.log('🌈 RGB mode changed:', mode)
-      // Connect to HIDHandle for RGB mode change
-      if (HIDHandle.deviceInfo.deviceOpen) {
-        try {
-          // Map mode names to HIDHandle mode values
-          const modeMap = {
-            'Rainbow': 0,
-            'Breathing': 1,
-            'Static': 2,
-            'Wave': 3,
-            'Ripple': 4,
-            'Neon': 5
-          }
-          const modeValue = modeMap[mode] || 0
-          HIDHandle.Set_MS_LightMode(modeValue)
-        } catch (error) {
-          console.error('Failed to change RGB mode:', error)
-        }
-      }
+      this.changeRGBMode(mode)
     },
     
     handleBrightnessChange(brightness) {
-      console.log('💡 RGB brightness changed:', brightness)
-      // Connect to HIDHandle for brightness control
-      if (HIDHandle.deviceInfo.deviceOpen) {
-        try {
-          HIDHandle.Set_MS_LightBrightness(brightness - 1) // 0-9 range for HIDHandle
-        } catch (error) {
-          console.error('Failed to change brightness:', error)
-        }
-      }
+      this.changeBrightness(brightness)
     },
     
     handleSpeedChange(speed) {
-      console.log('⚡ RGB speed changed:', speed)
-      // Connect to HIDHandle for speed control
-      if (HIDHandle.deviceInfo.deviceOpen) {
-        try {
-          HIDHandle.Set_MS_LightSpeed(speed - 1) // 0-9 range for HIDHandle
-        } catch (error) {
-          console.error('Failed to change speed:', error)
-        }
-      }
+      this.changeSpeed(speed)
     },
     
     handleColorChange(color) {
-      console.log('🎨 RGB color changed:', color)
-      // Connect to HIDHandle for color control
-      if (HIDHandle.deviceInfo.deviceOpen) {
-        try {
-          HIDHandle.Set_MS_LightColor(color)
-        } catch (error) {
-          console.error('Failed to change color:', error)
-        }
-      }
+      this.changeColor(color)
     },
     
     handleResetToDefault() {
-      console.log('🔄 RGB settings reset to default')
-      // Reset all RGB settings to default
-      if (HIDHandle.deviceInfo.deviceOpen) {
-        try {
-          HIDHandle.Set_MS_LightMode(0) // Rainbow
-          HIDHandle.Set_MS_LightBrightness(0) // Level 1
-          HIDHandle.Set_MS_LightSpeed(0) // Level 1
-          HIDHandle.Set_MS_LightColor('#a855f7')
-        } catch (error) {
-          console.error('Failed to reset RGB settings:', error)
-        }
-      }
+      this.resetToDefault()
     },
     
     handleProfileSelected(profileIndex) {
-      this.activeProfile = profileIndex
-      console.log('📋 Profile selected:', profileIndex)
-      // Handle profile switching if needed
+      this.selectProfile(profileIndex)
     }
   },
   mounted() {
-    // Initialize RGB settings from device if connected
-    if (HIDHandle.deviceInfo.deviceOpen) {
-      console.log('🎮 RGB View loaded - Device connected')
+    if (this.isDeviceConnected) {
+      // Initialize RGB settings from device
     }
   }
 }

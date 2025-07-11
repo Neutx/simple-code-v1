@@ -58,7 +58,7 @@
           </div>
           <div class="w-16 h-6 justify-center">
             <span class="text-white/50 text-lg font-semibold font-['DM_Sans']">DPI:</span>
-            <span class="text-white text-lg font-semibold font-['DM_Sans']"> {{ currentDPI }}</span>
+            <span class="text-white text-lg font-semibold font-['DM_Sans']"> {{ displayCurrentDPI }}</span>
           </div>
         </div>
         <div class="flex justify-start items-end gap-2.5">
@@ -67,7 +67,7 @@
           </div>
           <div class="w-44 h-6 justify-center">
             <span class="text-white/50 text-lg font-semibold font-['DM_Sans']">Polling rate:</span>
-            <span class="text-white text-lg font-semibold font-['DM_Sans']"> {{ pollingRate }}Hz</span>
+            <span class="text-white text-lg font-semibold font-['DM_Sans']"> {{ displayPollingRate }}Hz</span>
           </div>
         </div>
         <div class="flex justify-start items-end gap-2.5">
@@ -76,7 +76,7 @@
           </div>
           <div class="w-28 h-6 justify-center">
             <span class="text-white/50 text-lg font-semibold font-['DM_Sans']">Battery:</span>
-            <span class="text-white text-lg font-semibold font-['DM_Sans']"> {{ batteryLevel }}%</span>
+            <span class="text-white text-lg font-semibold font-['DM_Sans']"> {{ displayBatteryLevel }}%</span>
           </div>
         </div>
       </div>
@@ -119,21 +119,104 @@ export default {
   },
   data() {
     return {
-      profilesExpanded: false
+      profilesExpanded: false,
+      // Local reactive data for real-time updates
+      realTimePollingRate: null,
+      realTimeCurrentDPI: null,
+      realTimeBatteryLevel: null
     }
+  },
+  computed: {
+    // Use real-time data if available, otherwise fall back to props
+    displayPollingRate() {
+      return this.realTimePollingRate !== null ? this.realTimePollingRate : this.pollingRate
+    },
+    displayCurrentDPI() {
+      return this.realTimeCurrentDPI !== null ? this.realTimeCurrentDPI : this.currentDPI
+    },
+    displayBatteryLevel() {
+      return this.realTimeBatteryLevel !== null ? this.realTimeBatteryLevel : this.batteryLevel
+    }
+  },
+  watch: {
+    // Watchers for prop changes if needed
+  },
+  mounted() {
+    // Listen for real-time updates from sensor settings panel
+    this.$bus.$on("updateMouseUI", (mouseCfg) => {
+      try {
+        if (!mouseCfg || typeof mouseCfg !== 'object') return
+
+        // Update polling rate
+        if (typeof mouseCfg.reportRate === 'number' && mouseCfg.reportRate > 0) {
+          this.realTimePollingRate = mouseCfg.reportRate
+        }
+
+        // Update DPI
+        if (
+          mouseCfg.currentDpi !== undefined &&
+          mouseCfg.dpis &&
+          mouseCfg.dpis[mouseCfg.currentDpi] &&
+          mouseCfg.dpis[mouseCfg.currentDpi].value
+        ) {
+          this.realTimeCurrentDPI = mouseCfg.dpis[mouseCfg.currentDpi].value
+        }
+      } catch (error) {
+        console.error('Error updating mouse UI:', error)
+      }
+    })
+
+    // Listen for battery updates
+    this.$bus.$on("updateBattery", (batteryInfo) => {
+      try {
+        if (!batteryInfo || typeof batteryInfo !== 'object') return
+
+        if (typeof batteryInfo.level === 'number' && batteryInfo.level >= 0 && batteryInfo.level <= 100) {
+          this.realTimeBatteryLevel = batteryInfo.level
+        }
+      } catch (error) {
+        console.error('Error updating battery info:', error)
+      }
+    })
+
+    // Listen for specific polling rate changes
+    this.$bus.$on("pollingRateChanged", (newRate) => {
+      this.realTimePollingRate = newRate
+      this.$forceUpdate()
+    })
+
+    // Initialize real-time data with current prop values
+    this.realTimePollingRate = this.pollingRate
+    this.realTimeCurrentDPI = this.currentDPI
+    this.realTimeBatteryLevel = this.batteryLevel
+  },  beforeDestroy() {
+    // Clean up event listeners
+    this.$bus.$off("updateMouseUI")
+    this.$bus.$off("updateBattery")
+    this.$bus.$off("pollingRateChanged")
   },
   methods: {
     handleError(evt) {
       evt.target.src = '/mice/ikarus.svg'
     },
     toggleProfiles() {
-      console.log('🔄 Profile toggle clicked, expanded:', !this.profilesExpanded)
       this.profilesExpanded = !this.profilesExpanded
     },
     selectProfile(index) {
-      console.log('📋 Profile selected:', index)
       this.$emit('profile-selected', index)
       this.profilesExpanded = false // Collapse after selection
+    },
+    
+    // Direct method for immediate polling rate updates
+    updatePollingRate(newRate) {
+      this.realTimePollingRate = newRate
+      this.$forceUpdate()
+    },
+    
+    // Direct method for immediate DPI updates
+    updateDPI(newDPI) {
+      this.realTimeCurrentDPI = newDPI
+      this.$forceUpdate()
     }
   }
 }
