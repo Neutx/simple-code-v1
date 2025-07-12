@@ -78,7 +78,7 @@
       </div>
       
       <!-- Key Remapping Panel (only visible in keys mode) -->
-      <KeyRemappingPanel v-if="activeTab === 'keys'" @key-mapping-updated="handleKeyMappingUpdate" @panel-state-changed="handlePanelStateChange" />
+      <KeyRemappingPanel v-if="activeTab === 'keys'" @key-mapping-update="handleKeyMappingUpdate" @panel-state-changed="handlePanelStateChange" />
       
       <!-- RGB Mouse Display -->
       <div class="rgb-mouse-section" v-if="activeTab === 'rgb'">
@@ -215,7 +215,7 @@ export default {
     }
   },
   
-  mounted() {
+  async mounted() {
     // Redirect to initialize if not connected and not already on the initialize page
     if (!this.isConnected && this.$route.path !== '/initialize') {
       this.$router.push('/initialize');
@@ -231,6 +231,19 @@ export default {
     this.$bus.$on("updateSensorMouseDisplay", (data) => {
       this.updateSensorMouseDisplay(data.type, data.value)
     })
+
+    // Load and sync macros when component mounts
+    try {
+      await this.$store.dispatch('macros/loadMacros');
+      await this.syncMacrosToDevice();
+    } catch (error) {
+      console.error('Error loading macros:', error);
+    }
+
+    // Listen for macro updates
+    this.$bus.$on("updateMacroList", () => {
+      this.syncMacrosToDevice();
+    });
   },
   
   beforeDestroy() {
@@ -308,8 +321,193 @@ export default {
       // Handle key selection logic here
     },
     
-    handleKeyMappingUpdate() {
+    handleKeyMappingUpdate(mapping) {
       // Handle key mapping update logic here
+      console.log('Key mapping update received:', mapping);
+      
+      // Convert key name to device button index
+      const keyIndex = this.getKeyIndex(mapping.key);
+      if (keyIndex === -1) {
+        console.error('Unknown key:', mapping.key);
+        return;
+      }
+      
+      // Apply the mapping to the device
+      this.applyKeyMappingToDevice(keyIndex, mapping);
+    },
+
+    getKeyIndex(keyName) {
+      // Map key names to device button indices
+      const keyMap = {
+        'left-click': 0,
+        'right-click': 1,
+        'middle-click': 2,
+        'mouse-button-4': 3,
+        'mouse-button-5': 4,
+        // Add more mappings as needed
+      };
+      
+      return keyMap[keyName] !== undefined ? keyMap[keyName] : -1;
+    },
+
+    async applyKeyMappingToDevice(keyIndex, mapping) {
+      if (!this.isConnected) {
+        console.warn('Device not connected, cannot apply key mapping');
+        return;
+      }
+
+      try {
+        let keyFunction = {};
+        let macroData = null;
+
+        // Convert function value to device format
+        switch (mapping.value) {
+          case 'left-click':
+            keyFunction = {
+              type: HIDHandle.MouseKeyFunction.MouseKey,
+              param: 0x0100
+            };
+            break;
+          case 'right-click':
+            keyFunction = {
+              type: HIDHandle.MouseKeyFunction.MouseKey,
+              param: 0x0200
+            };
+            break;
+          case 'middle-click':
+            keyFunction = {
+              type: HIDHandle.MouseKeyFunction.MouseKey,
+              param: 0x0400
+            };
+            break;
+          case 'back':
+            keyFunction = {
+              type: HIDHandle.MouseKeyFunction.MouseKey,
+              param: 0x0800
+            };
+            break;
+          case 'forward':
+            keyFunction = {
+              type: HIDHandle.MouseKeyFunction.MouseKey,
+              param: 0x1000
+            };
+            break;
+          case 'dpi-up':
+          case 'dpi-down':
+          case 'dpi-cycle':
+            keyFunction = {
+              type: HIDHandle.MouseKeyFunction.DPISwitch,
+              param: 0x0001
+            };
+            break;
+          case 'profile-cycle':
+            keyFunction = {
+              type: HIDHandle.MouseKeyFunction.ProfileSwitch,
+              param: 0x0001
+            };
+            break;
+          case 'disabled':
+            keyFunction = {
+              type: HIDHandle.MouseKeyFunction.Disable,
+              param: 0x0000
+            };
+            break;
+          case 'macro':
+            if (mapping.macroData) {
+              keyFunction = {
+                type: HIDHandle.MouseKeyFunction.Macro,
+                param: (keyIndex << 8) + parseInt(mapping.macroData.cycleTimes || 1)
+              };
+              
+              // Prepare macro data for device
+              macroData = {
+                name: mapping.macroData.name,
+                contexts: mapping.macroData.contexts || []
+              };
+            } else {
+              console.error('Macro selected but no macro data provided');
+              return;
+            }
+            break;
+          default:
+            console.error('Unknown function value:', mapping.value);
+            return;
+        }
+
+        // If it's a macro, first set the macro data to the device slot
+        if (mapping.value === 'macro' && macroData) {
+          console.log('Setting macro data to device slot:', keyIndex, macroData);
+          await HIDHandle.Set_MS_Macro(keyIndex, macroData);
+          
+          // Update the device's macro slot
+          if (HIDHandle.deviceInfo.mouseCfg.macros[keyIndex]) {
+            HIDHandle.deviceInfo.mouseCfg.macros[keyIndex] = {
+              name: macroData.name,
+              contexts: macroData.contexts,
+              cycleTimes: macroData.cycleTimes || 1
+            };
+          }
+        }
+
+        // Set key function on device
+        console.log('Setting key function:', keyIndex, keyFunction);
+        await HIDHandle.Set_MS_KeyFunction(keyIndex, keyFunction);
+
+        // Update the device's keys array to reflect the new assignment
+        HIDHandle.deviceInfo.mouseCfg.keys[keyIndex] = [
+          keyFunction.type.toString(16),
+          "0x" + keyFunction.param.toString(16).padStart(4, '0')
+        ];
+
+        // Update the UI to reflect the change
+        this.$bus.$emit("updateMouseUI", HIDHandle.deviceInfo.mouseCfg);
+        
+        console.log('Key mapping applied successfully:', mapping.key, mapping.value);
+        
+      } catch (error) {
+        console.error('Error applying key mapping to device:', error);
+      }
+    },
+
+    async syncMacrosToDevice() {
+      if (!this.isConnected) {
+        console.warn('Device not connected, cannot sync macros');
+        return;
+      }
+
+      try {
+        // Get all macros from the macros store
+        const macros = this.$store.getters['macros/allMacros'];
+        
+        // Convert Firebase macros to device format
+        const deviceMacros = macros.map(macro => ({
+          name: macro.name,
+          contexts: macro.contexts || [],
+          cycleTimes: macro.cycleTimes || 1
+        }));
+
+        // Initialize device macro slots (6 slots for 6 buttons)
+        const macroSlots = new Array(6).fill(null).map(() => ({
+          name: '',
+          contexts: [],
+          cycleTimes: 1
+        }));
+
+        // Update the device's internal macro list structure
+        HIDHandle.deviceInfo.mouseCfg.macros = macroSlots;
+        
+        // Store available macros separately for reference
+        HIDHandle.deviceInfo.mouseCfg.availableMacros = deviceMacros;
+        
+        // Emit event to update legacy system and UI
+        this.$bus.$emit("updateMacroList", deviceMacros);
+        this.$bus.$emit("updateMouseUI", HIDHandle.deviceInfo.mouseCfg);
+        
+        console.log('Synced macros to device:', deviceMacros.length, 'available macros');
+        
+      } catch (error) {
+        console.error('Error syncing macros to device:', error);
+      }
     },
 
     handlePanelStateChange({ isExpanded, selectedKey }) {

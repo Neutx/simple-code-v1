@@ -65,6 +65,8 @@
 </template>
 
 <script>
+import HIDKey from '@/assets/js/HIDKey';
+
 export default {
   name: 'CreateMacroView',
   props: {
@@ -72,7 +74,8 @@ export default {
       type: String,
       required: true
     }
-  },  data() {
+  },  
+  data() {
     return {
       selectedType: null,
       showRecordingUI: false,
@@ -116,6 +119,10 @@ export default {
       if (this.showRecordingUI) {
         this.showRecordingUI = false;
         this.isRecording = false;
+        // Stop recording if it's active
+        if (this.isRecording) {
+          this.stopRecording();
+        }
         if (this.selectedType !== 'toggle') {
             this.selectedType = null;
         }
@@ -126,24 +133,120 @@ export default {
       }
     },
     toggleRecording() {
-        this.isRecording = !this.isRecording;
-        if (this.isRecording) {
-            // Simulate recording
-            this.recordedActions = [
-                { key: 'Ctrl', type: '↓', delay: 50 },
-                { key: 'C', type: '↓', delay: 50 },
-                { key: 'C', type: '↑', delay: 50 },
-                { key: 'Ctrl', type: '↑', delay: 50 },
-            ];
+      this.isRecording = !this.isRecording;
+      
+      if (this.isRecording) {
+        this.startRecording();
+      } else {
+        this.stopRecording();
+      }
+    },
+    startRecording() {
+      // Clear previous recordings
+      this.recordedActions = [];
+      
+      // Add keyboard event listeners for real recording
+      document.addEventListener('keydown', this.handleKeyDown);
+      document.addEventListener('keyup', this.handleKeyUp);
+      
+      console.log('Started recording macro...');
+    },
+    stopRecording() {
+      // Remove keyboard event listeners
+      document.removeEventListener('keydown', this.handleKeyDown);
+      document.removeEventListener('keyup', this.handleKeyUp);
+      
+      console.log('Stopped recording macro. Recorded actions:', this.recordedActions);
+    },
+    handleKeyDown(event) {
+      if (this.isRecording) {
+        this.addKeyAction(event, 'down');
+      }
+    },
+    handleKeyUp(event) {
+      if (this.isRecording) {
+        this.addKeyAction(event, 'up');
+      }
+    },
+    addKeyAction(event, direction) {
+      // Prevent default browser behavior
+      event.preventDefault();
+      
+      // Limit to 70 actions like in legacy system
+      if (this.recordedActions.length >= 70) {
+        console.log("Macro action limit reached (70)");
+        return;
+      }
+      
+      try {
+        // Convert browser key code to HID format using the legacy system
+        const keyCode = HIDKey.keyToHID(event.code);
+        
+        if (keyCode) {
+          const action = {
+            key: keyCode.text || event.code,
+            type: direction === 'down' ? '↓' : '↑',
+            delay: 50,
+            // Store HID data for device communication
+            hidData: {
+              status: direction === 'down' ? 0 : 1,
+              type: keyCode.type,
+              value: keyCode.value
+            }
+          };
+          
+          this.recordedActions.push(action);
+          
+          console.log('Recorded key:', action);
         }
+      } catch (error) {
+        console.error('Error recording key:', error);
+      }
     },
     saveMacro() {
-        this.$emit('save-macro', {
-            name: this.macroName,
-            type: this.selectedType,
-            actions: this.recordedActions,
-            cycleCount: this.selectedType === 'toggle' ? this.cycleCount : null
-        });
+      // Convert recorded actions to the format expected by the legacy system
+      const contexts = this.recordedActions.map(action => ({
+        status: action.hidData.status,
+        type: action.hidData.type,
+        value: action.hidData.value,
+        delay: action.delay
+      }));
+      
+      // Map new UI cycle types to legacy system values
+      let cycleTimes = 1;
+      switch(this.selectedType) {
+        case 'repeat':
+          cycleTimes = 254; // Cycle until button is released
+          break;
+        case 'no-repeat':
+          cycleTimes = 255; // Cycle until any button is pressed
+          break;
+        case 'on-press':
+          cycleTimes = 253; // Cycle until specific button is pressed
+          break;
+        case 'toggle':
+          cycleTimes = this.cycleCount; // Cycle specific number of times
+          break;
+        default:
+          cycleTimes = 1;
+      }
+      
+      const macroData = {
+        name: this.macroName,
+        contexts: contexts,
+        cycleTimes: cycleTimes,
+        // Also include the UI-friendly format
+        actions: this.recordedActions,
+        type: this.selectedType
+      };
+      
+      this.$emit('save-macro', macroData);
+    }
+  },
+  beforeDestroy() {
+    // Cleanup event listeners when component is destroyed
+    if (this.isRecording) {
+      this.stopRecording();
     }
   }
 }
