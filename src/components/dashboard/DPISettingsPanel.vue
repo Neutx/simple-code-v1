@@ -397,9 +397,9 @@ export default {
         }
         
         // Update the device's internal state to match our local state
-        if (HIDHandle.deviceInfo && HIDHandle.deviceInfo.mouseCfg && HIDHandle.deviceInfo.mouseCfg.lightEffect) {
-          HIDHandle.deviceInfo.mouseCfg.lightEffect.mode = this.mode;
-          HIDHandle.deviceInfo.mouseCfg.lightEffect.state = this.mode !== 0;
+        if (HIDHandle.deviceInfo && HIDHandle.deviceInfo.mouseCfg && HIDHandle.deviceInfo.mouseCfg.dpiEffect) {
+          HIDHandle.deviceInfo.mouseCfg.dpiEffect.mode = this.mode;
+          HIDHandle.deviceInfo.mouseCfg.dpiEffect.state = this.mode !== 0;
         }
         
         // Emit the update event to keep other components synchronized
@@ -417,8 +417,8 @@ export default {
         await HIDHandle.Set_MS_DPILightBrightness(this.brightness);
         
         // Update the device's internal state
-        if (HIDHandle.deviceInfo && HIDHandle.deviceInfo.mouseCfg && HIDHandle.deviceInfo.mouseCfg.lightEffect) {
-          HIDHandle.deviceInfo.mouseCfg.lightEffect.brightness = this.brightness;
+        if (HIDHandle.deviceInfo && HIDHandle.deviceInfo.mouseCfg && HIDHandle.deviceInfo.mouseCfg.dpiEffect) {
+          HIDHandle.deviceInfo.mouseCfg.dpiEffect.brightness = HIDHandle.Index_To_DPILightBrightness(this.brightness);
         }
         
         // Emit the update event
@@ -436,8 +436,8 @@ export default {
         await HIDHandle.Set_MS_DPILightSpeed(this.speed);
         
         // Update the device's internal state
-        if (HIDHandle.deviceInfo && HIDHandle.deviceInfo.mouseCfg && HIDHandle.deviceInfo.mouseCfg.lightEffect) {
-          HIDHandle.deviceInfo.mouseCfg.lightEffect.speed = this.speed;
+        if (HIDHandle.deviceInfo && HIDHandle.deviceInfo.mouseCfg && HIDHandle.deviceInfo.mouseCfg.dpiEffect) {
+          HIDHandle.deviceInfo.mouseCfg.dpiEffect.speed = this.speed;
         }
         
         // Emit the update event
@@ -600,12 +600,12 @@ export default {
         const mouseCfg = HIDHandle.deviceInfo.mouseCfg;
         
         if (mouseCfg) {
-          // Update DPI light settings
-          const lightEffect = mouseCfg.lightEffect;
-          if (lightEffect) {
-            this.mode = lightEffect.state == false ? 0 : lightEffect.mode;
-            this.brightness = lightEffect.brightness;
-            this.speed = lightEffect.speed;
+          // Update DPI light settings from the correct state property
+          const dpiEffect = mouseCfg.dpiEffect;
+          if (dpiEffect) {
+            this.mode = dpiEffect.state == false ? 0 : dpiEffect.mode;
+            this.brightness = HIDHandle.DPILightBrightness_To_Index(dpiEffect.brightness);
+            this.speed = dpiEffect.speed;
           }
           
           // Update DPI profiles from device (like in reference DpiSetting.vue)
@@ -646,11 +646,11 @@ export default {
     // Listen for device updates (like in reference DpiSetting.vue)
     this.$bus.$on("updateMouseUI", mouseCfg => {
       if (mouseCfg) {
-        // Update DPI light settings
-        if (mouseCfg.lightEffect) {
-          const newMode = mouseCfg.lightEffect.state == false ? 0 : mouseCfg.lightEffect.mode;
-          const newBrightness = mouseCfg.lightEffect.brightness;
-          const newSpeed = mouseCfg.lightEffect.speed;
+        // Update DPI light settings from the correct state property
+        if (mouseCfg.dpiEffect) {
+          const newMode = mouseCfg.dpiEffect.state == false ? 0 : mouseCfg.dpiEffect.mode;
+          const newBrightness = HIDHandle.DPILightBrightness_To_Index(mouseCfg.dpiEffect.brightness);
+          const newSpeed = mouseCfg.dpiEffect.speed;
           
           // Only update if the values are actually different to avoid unnecessary re-renders
           if (this.mode !== newMode) {

@@ -14,14 +14,14 @@
         <!-- DPI markers on the track -->
         <div 
           v-for="(profile, index) in activeDpiProfiles" 
-          :key="`marker-${index}-${profile.dpi}-${profile.color.replace('#', '')}-max${maxDpiProfiles}-sel${selectedDpiIndex}`"
+          :key="`marker-${index}-${profile.dpi}-${profile.color.replace('#', '')}-max${currentMaxDpiProfiles}-sel${currentSelectedDpiIndex}`"
           class="dpi-marker"
           :style="{ 
             left: calculatePosition(profile.dpi, index),
             backgroundColor: profile.color,
-            zIndex: index === selectedDpiIndex ? 100 : 50 + index
+            zIndex: index === currentSelectedDpiIndex ? 100 : 50 + index
           }"
-          :class="{ active: index === selectedDpiIndex }"
+          :class="{ active: index === currentSelectedDpiIndex }"
           @click="setActiveDPI(index)"
         ></div>
       </div>
@@ -30,15 +30,15 @@
       <div class="dpi-value-labels">
         <span 
           v-for="(profile, index) in activeDpiProfiles" 
-          :key="`label-${index}-${profile.dpi}-${profile.color.replace('#', '')}-max${maxDpiProfiles}-sel${selectedDpiIndex}`"
+          :key="`label-${index}-${profile.dpi}-${profile.color.replace('#', '')}-max${currentMaxDpiProfiles}-sel${currentSelectedDpiIndex}`"
           class="dpi-value-label"
           :style="{ 
             left: calculatePosition(profile.dpi, index),
             color: profile.color,
-            zIndex: index === selectedDpiIndex ? 100 : 50 + index
+            zIndex: index === currentSelectedDpiIndex ? 100 : 50 + index
           }"
           :class="{ 
-            active: index === selectedDpiIndex
+            active: index === currentSelectedDpiIndex
           }"
           @click="setActiveDPI(index)"
         >
@@ -50,6 +50,8 @@
 </template>
 
 <script>
+import HIDHandle from '@/assets/js/HIDHandle';
+
 export default {
   name: 'DPIControlBar',
   props: {
@@ -75,13 +77,52 @@ export default {
       default: 0
     }
   },
+  data() {
+    return {
+      deviceInfo: HIDHandle.deviceInfo,
+      localDpiProfiles: [],
+      localMaxDpiProfiles: 4,
+      localSelectedDpiIndex: 0,
+      isInitialized: false
+    }
+  },
   computed: {
+    // Use device state if available, otherwise fall back to props
+    currentDpiProfiles() {
+      if (this.isDeviceConnected && this.localDpiProfiles.length > 0) {
+        return this.localDpiProfiles;
+      }
+      return this.dpiProfiles;
+    },
+    
+    currentMaxDpiProfiles() {
+      if (this.isDeviceConnected && this.isInitialized) {
+        return this.localMaxDpiProfiles;
+      }
+      return this.maxDpiProfiles;
+    },
+    
+    currentSelectedDpiIndex() {
+      if (this.isDeviceConnected && this.isInitialized) {
+        return this.localSelectedDpiIndex;
+      }
+      return this.selectedDpiIndex;
+    },
+    
+    isDeviceConnected() {
+      return this.deviceInfo && this.deviceInfo.deviceOpen;
+    },
+    
     activeDpiProfiles() {
-      // Simply slice the array based on maxDpiProfiles - maintain original order and indices
-      const active = this.dpiProfiles.slice(0, this.maxDpiProfiles);
-      console.log('🎯 Active DPI Profiles (showing ' + this.maxDpiProfiles + ' out of ' + this.dpiProfiles.length + '):', active);
-      console.log('📊 Max profiles:', this.maxDpiProfiles, 'Selected:', this.selectedDpiIndex);
-      console.log('🔍 All profiles:', this.dpiProfiles);
+      // Use current state (device or props) and slice based on max profiles
+      const profiles = this.currentDpiProfiles;
+      const maxProfiles = this.currentMaxDpiProfiles;
+      const active = profiles.slice(0, maxProfiles);
+      
+      console.log('🎯 Active DPI Profiles (showing ' + maxProfiles + ' out of ' + profiles.length + '):', active);
+      console.log('📊 Max profiles:', maxProfiles, 'Selected:', this.currentSelectedDpiIndex);
+      console.log('🔍 All profiles:', profiles);
+      console.log('🔌 Device connected:', this.isDeviceConnected, 'Initialized:', this.isInitialized);
       
       // Log colors for debugging
       active.forEach((profile, index) => {
@@ -89,8 +130,8 @@ export default {
       });
       
       // Additional validation
-      if (active.length !== this.maxDpiProfiles) {
-        console.warn('⚠️ Mismatch: Expected', this.maxDpiProfiles, 'profiles but got', active.length);
+      if (active.length !== maxProfiles) {
+        console.warn('⚠️ Mismatch: Expected', maxProfiles, 'profiles but got', active.length);
       }
       
       return active;
@@ -98,13 +139,25 @@ export default {
     
     // Computed property to track color changes for reactivity
     profileColors() {
-      return this.dpiProfiles.map(profile => profile.color);
+      return this.currentDpiProfiles.map(profile => profile.color);
     }
   },
   watch: {
-    dpiProfiles: {
+    // Watch device connection state
+    isDeviceConnected: {
+      handler(newConnected, oldConnected) {
+        console.log('🔌 DPI Control Bar: Device connection changed from', oldConnected, 'to', newConnected);
+        if (newConnected) {
+          this.updateFromDeviceState();
+        }
+      },
+      immediate: true
+    },
+    
+    // Watch for changes in current DPI profiles
+    currentDpiProfiles: {
       handler(newProfiles, oldProfiles) {
-        console.log('📊 DPI Control Bar: Profiles updated from', oldProfiles?.length || 0, 'to', newProfiles.length);
+        console.log('📊 DPI Control Bar: Current profiles updated from', oldProfiles?.length || 0, 'to', newProfiles.length);
         
         // Log color changes specifically
         if (oldProfiles && newProfiles) {
@@ -120,9 +173,11 @@ export default {
       deep: true,
       immediate: true
     },
-    maxDpiProfiles: {
+    
+    // Watch for changes in max DPI profiles
+    currentMaxDpiProfiles: {
       handler(newMax, oldMax) {
-        console.log('🔢 DPI Control Bar: Max profiles changed from', oldMax, 'to', newMax);
+        console.log('🔢 DPI Control Bar: Current max profiles changed from', oldMax, 'to', newMax);
         console.log('📋 This should show exactly', newMax, 'markers on the bar');
         
         // Force immediate re-computation of activeDpiProfiles
@@ -133,17 +188,20 @@ export default {
       },
       immediate: true
     },
-    selectedDpiIndex: {
+    
+    // Watch for changes in selected DPI index
+    currentSelectedDpiIndex: {
       handler(newIndex, oldIndex) {
-        console.log('👆 DPI Control Bar: Selected index changed from', oldIndex, 'to', newIndex);
+        console.log('👆 DPI Control Bar: Current selected index changed from', oldIndex, 'to', newIndex);
         
         // Validate selection is within bounds
-        if (newIndex >= this.maxDpiProfiles) {
-          console.warn('⚠️ Selected index', newIndex, 'is beyond max profiles', this.maxDpiProfiles);
+        if (newIndex >= this.currentMaxDpiProfiles) {
+          console.warn('⚠️ Selected index', newIndex, 'is beyond max profiles', this.currentMaxDpiProfiles);
         }
       },
       immediate: true
     },
+    
     // Watch the computed property directly for debugging
     activeDpiProfiles: {
       handler(newActive, oldActive) {
@@ -158,6 +216,37 @@ export default {
       handler(newColors, oldColors) {
         console.log('🎨 Profile colors changed:', oldColors, '→', newColors);
         this.$forceUpdate();
+      },
+      immediate: true
+    },
+    
+    // Keep compatibility with parent prop changes
+    dpiProfiles: {
+      handler() {
+        if (!this.isDeviceConnected) {
+          console.log('📊 DPI Control Bar: Prop profiles updated (device not connected)');
+          this.$forceUpdate();
+        }
+      },
+      deep: true,
+      immediate: true
+    },
+    
+    maxDpiProfiles: {
+      handler() {
+        if (!this.isDeviceConnected) {
+          console.log('🔢 DPI Control Bar: Prop max profiles updated (device not connected)');
+          this.$forceUpdate();
+        }
+      },
+      immediate: true
+    },
+    
+    selectedDpiIndex: {
+      handler() {
+        if (!this.isDeviceConnected) {
+          console.log('👆 DPI Control Bar: Prop selected index updated (device not connected)');
+        }
       },
       immediate: true
     }
@@ -212,30 +301,191 @@ export default {
       return `${finalPosition}%`;
     },
     
-    setActiveDPI(index) {
+    async setActiveDPI(index) {
       console.log('🎮 DPI Control Bar: Setting active DPI to index', index);
+      
+      // Update local state immediately for responsive UI
+      this.localSelectedDpiIndex = index;
+      
+      // Emit to parent for compatibility
       this.$emit('dpi-changed', index);
+      
+      // Update device if connected
+      if (this.isDeviceConnected) {
+        try {
+          await HIDHandle.Set_MS_CurrentDPI(index);
+          console.log('✅ DPI Control Bar: Device DPI updated to index', index);
+          
+          // Update device state
+          if (HIDHandle.deviceInfo && HIDHandle.deviceInfo.mouseCfg) {
+            HIDHandle.deviceInfo.mouseCfg.currentDpi = index;
+          }
+          
+          // Emit update events
+          this.$bus.$emit("updateCurrentDPI", index);
+          this.$bus.$emit("updateMouseUI", HIDHandle.deviceInfo.mouseCfg);
+        } catch (error) {
+          console.error('Error updating device DPI:', error);
+          // Revert local state if device update fails
+          this.updateFromDeviceState();
+        }
+      }
+    },
+    
+    // Initialize from device state
+    updateFromDeviceState() {
+      if (!this.isDeviceConnected) {
+        console.log('🔌 DPI Control Bar: Device not connected, using props');
+        return;
+      }
+      
+      const mouseCfg = this.deviceInfo.mouseCfg;
+      if (!mouseCfg) {
+        console.log('⚠️ DPI Control Bar: No mouse config available');
+        return;
+      }
+      
+      // Update DPI profiles from device
+      if (mouseCfg.dpis) {
+        this.localDpiProfiles = [];
+        for (let i = 0; i < 8; i++) {
+          const deviceColor = mouseCfg.dpis[i] ? mouseCfg.dpis[i].color : 'rgb(239, 68, 68)';
+          const dpiProfile = {
+            dpi: mouseCfg.dpis[i] ? mouseCfg.dpis[i].value : (400 + i * 400),
+            color: this.rgbToHex(deviceColor) // Convert RGB to hex for UI
+          };
+          this.localDpiProfiles.push(dpiProfile);
+        }
+      }
+      
+      // Update max DPI and current DPI
+      if (mouseCfg.maxDpiStage !== undefined) {
+        this.localMaxDpiProfiles = mouseCfg.maxDpiStage;
+      }
+      
+      if (mouseCfg.currentDpi !== undefined) {
+        this.localSelectedDpiIndex = mouseCfg.currentDpi;
+      }
+      
+      this.isInitialized = true;
+      
+      console.log('🔄 DPI Control Bar: Updated from device state:', {
+        maxDpi: this.localMaxDpiProfiles,
+        currentDpi: this.localSelectedDpiIndex,
+        profiles: this.localDpiProfiles.slice(0, this.localMaxDpiProfiles)
+      });
+    },
+    
+    // Convert RGB to hex for UI display
+    rgbToHex(rgb) {
+      if (rgb.startsWith('#')) {
+        return rgb; // Already hex format
+      }
+      
+      const result = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+      if (result) {
+        const r = parseInt(result[1], 10);
+        const g = parseInt(result[2], 10);
+        const b = parseInt(result[3], 10);
+        const toHex = (n) => {
+          const hex = n.toString(16);
+          return hex.length === 1 ? '0' + hex : hex;
+        };
+        return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
+      }
+      return '#EF4444'; // Default to red if conversion fails
     },
     
     // Debug method to verify synchronization
     debugSync() {
       console.log('🔍 DPI Control Bar Debug:');
-      console.log('  - Max DPI Profiles prop:', this.maxDpiProfiles);
+      console.log('  - Device connected:', this.isDeviceConnected);
+      console.log('  - Initialized:', this.isInitialized);
+      console.log('  - Max DPI Profiles (current):', this.currentMaxDpiProfiles);
+      console.log('  - Max DPI Profiles (local):', this.localMaxDpiProfiles);
+      console.log('  - Max DPI Profiles (prop):', this.maxDpiProfiles);
       console.log('  - Active profiles count:', this.activeDpiProfiles.length);
-      console.log('  - All profiles count:', this.dpiProfiles.length);
-      console.log('  - Selected index:', this.selectedDpiIndex);
+      console.log('  - Selected index (current):', this.currentSelectedDpiIndex);
+      console.log('  - Selected index (local):', this.localSelectedDpiIndex);
+      console.log('  - Selected index (prop):', this.selectedDpiIndex);
       console.log('  - Active profiles:', this.activeDpiProfiles.map((p, i) => `${i}: ${p.dpi} (${p.color})`));
     }
   },
   
   mounted() {
     console.log('🚀 DPI Control Bar mounted');
+    
+    // Initialize from device state if connected
+    this.updateFromDeviceState();
+    
+    // Listen for device updates
+    this.$bus.$on("updateMouseUI", mouseCfg => {
+      if (mouseCfg && this.isDeviceConnected) {
+        // Update DPI profiles from device
+        if (mouseCfg.dpis) {
+          this.localDpiProfiles = [];
+          for (let i = 0; i < 8; i++) {
+            const deviceColor = mouseCfg.dpis[i] ? mouseCfg.dpis[i].color : 'rgb(239, 68, 68)';
+            const dpiProfile = {
+              dpi: mouseCfg.dpis[i] ? mouseCfg.dpis[i].value : (400 + i * 400),
+              color: this.rgbToHex(deviceColor)
+            };
+            this.localDpiProfiles.push(dpiProfile);
+          }
+        }
+        
+        // Update max DPI and current DPI
+        if (mouseCfg.maxDpiStage !== undefined) {
+          this.localMaxDpiProfiles = mouseCfg.maxDpiStage;
+        }
+        
+        if (mouseCfg.currentDpi !== undefined) {
+          this.localSelectedDpiIndex = mouseCfg.currentDpi;
+        }
+        
+        this.isInitialized = true;
+        
+        console.log('🔄 DPI Control Bar: Updated via updateMouseUI event');
+      }
+    });
+    
+    // Listen for current DPI updates
+    this.$bus.$on("updateCurrentDPI", index => {
+      if (this.isDeviceConnected) {
+        this.localSelectedDpiIndex = index;
+        console.log('🎯 DPI Control Bar: Current DPI updated via updateCurrentDPI event:', index);
+      }
+    });
+    
+    // Listen for device connection events
+    this.$bus.$on("deviceConnect", (connected) => {
+      if (connected) {
+        // Small delay to ensure device state is fully initialized
+        setTimeout(() => {
+          this.updateFromDeviceState();
+        }, 500);
+      } else {
+        // Reset to uninitialized state when device disconnects
+        this.isInitialized = false;
+        this.localDpiProfiles = [];
+        this.localMaxDpiProfiles = 4;
+        this.localSelectedDpiIndex = 0;
+      }
+    });
+    
     this.debugSync();
   },
   
   updated() {
     console.log('🔄 DPI Control Bar updated');
     this.debugSync();
+  },
+  
+  beforeDestroy() {
+    // Clean up event listeners
+    this.$bus.$off("updateMouseUI");
+    this.$bus.$off("updateCurrentDPI");
+    this.$bus.$off("deviceConnect");
   }
 }
 </script>
