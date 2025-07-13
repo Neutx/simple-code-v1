@@ -1,5 +1,20 @@
 <template>
   <div class="dashboard-container">
+    <!-- Inactivity Overlay -->
+    <div v-if="!isOnline" class="inactivity-overlay">
+      <div class="inactivity-message">
+          <div class="mouse-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 5C8.13401 5 5 8.13401 5 12V18C5 19.6569 6.34315 21 8 21H16C17.6569 21 19 19.6569 19 18V12C19 8.13401 15.866 5 12 5Z" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M12 5V2" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M9 3H15" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+          </div>
+          <h3>Mouse is asleep</h3>
+          <p>Shake your mouse to wake it up.</p>
+      </div>
+    </div>
+
     <!-- Top Section with all elements in one row -->
     <div class="dashboard-header">
       <!-- Back Button -->
@@ -164,7 +179,7 @@ export default {
   },
   computed: {
     ...mapGetters('auth', ['currentUser']),
-    ...mapGetters('device', ['isConnected']),
+    ...mapGetters('device', ['isConnected', 'isOnline']),
     ...mapGetters('settings', ['dpiSettings', 'rgbSettings', 'sensorSettings']),
     
     isDPIMode() {
@@ -674,6 +689,49 @@ export default {
   &.panel-expanded {
     left: calc(50% + 15vw);
   }
+}
+
+.inactivity-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(12, 12, 12, 0.7);
+  backdrop-filter: blur(10px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  color: white;
+  text-align: center;
+  flex-direction: column;
+}
+
+.inactivity-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.mouse-icon svg {
+  width: 48px;
+  height: 48px;
+  opacity: 0.8;
+}
+
+.inactivity-message h3 {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.inactivity-message p {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0;
 }
 
 // Responsive breakpoints

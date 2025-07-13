@@ -15,7 +15,7 @@ export default {
     handleBack() {
       this.$emit('back')
       // Default behavior: go back in history
-      this.$router.go(-1)
+      this.$router.go('/initialize')
     }
   }
 }

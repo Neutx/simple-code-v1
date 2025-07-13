@@ -94,7 +94,6 @@ const mutations = {
   },
   SET_SENSOR_PERFORMANCE(state, performance) {
     state.sensorSettings.performance = performance
-    state.sensorSettings.sleepTimer = performance // Keep in sync
   },
   SET_SENSOR_RIPPLE(state, enabled) {
     state.sensorSettings.ripple = enabled
@@ -111,7 +110,6 @@ const mutations = {
   },
   SET_SENSOR_SLEEP_TIMER(state, timer) {
     state.sensorSettings.sleepTimer = timer
-    state.sensorSettings.performance = timer // Keep in sync
   },
   SET_WIRED_DEVICE(state, isWired) {
     state.sensorSettings.isWired = isWired
@@ -410,9 +408,9 @@ const actions = {
   },
 
   // Save settings to cloud (placeholder for future implementation)
-  async saveSettingsToCloud({ state, rootState }) {
+  async saveSettingsToCloud({ dispatch, state, rootState }) {
     try {
-      if (!rootState.auth.user) return
+      if (!rootState.auth.user) return;
 
       const settingsData = {
         dpiSettings: state.dpiSettings,
@@ -421,12 +419,16 @@ const actions = {
         sensorSettings: state.sensorSettings,
         pollingRate: state.pollingRate,
         updatedAt: new Date().toISOString()
-      }
+      };
 
-      // This will be implemented when device store is connected
-      await rootState.device.saveDeviceSettings(settingsData)
+      // Correctly dispatch the action to the device module
+      await dispatch('device/saveDeviceSettings', settingsData, { root: true });
+      
     } catch (error) {
-      console.error('Error saving settings to cloud:', error)
+      // Don't log expected errors if the function doesn't exist yet
+      if (!error.message.includes("is not a function") && !error.message.includes("unknown action")) {
+        console.error('Error saving settings to cloud:', error);
+      }
     }
   },
 
