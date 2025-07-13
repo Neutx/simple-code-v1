@@ -195,7 +195,8 @@ export default {
       
       // UI state flags
       isUpdatingFromDevice: false,
-      isUpdatingFromVuex: false
+      isUpdatingFromVuex: false,
+      isInitializing: false // Add a flag to block incoming updates during component mount
     }
   },
   computed: {
@@ -269,7 +270,7 @@ export default {
     // Performance status from Vuex state
     performanceStatus() {
       if (!this.sensorPerformanceState) return 'Disabled';
-      const perfOption = this.performanceOptions.find(p => p.value === this.sensorPerformance);
+      const perfOption = this.performanceOptions.find(p => p.value === this.sensorSleepTimer);
       return perfOption ? `Active (${perfOption.option})` : 'Active';
     },
 
@@ -298,294 +299,184 @@ export default {
       'setSensorRipple',
       'setSensorAngle',
       'setSensorMotionSync',
-      'setSensorPollingRate',
       'setSensorSleepTimer',
-      'setWiredDevice',
-      'setCorderMode',
-      'updateSensorSettings',
-      'initializeSensorSettingsFromDevice',
-      'resetSensorSettings',
       'saveSettingsToLocalStorage',
       'loadSettingsFromLocalStorage'
     ]),
 
-    // Initialize from Vuex store
-    initializeFromVuex() {
-      // Load persisted settings from localStorage
-      this.loadSettingsFromLocalStorage();
-    },
-
-    // Sync methods from Vuex to device
+    // Sync methods to send data to the device. They no longer emit events.
     async syncSensorModeToDevice(mode) {
       if (!this.isDeviceConnected) return;
-      
-      try {
-        await HIDHandle.Set_MS_SensorMode(mode);
-        this.$bus.$emit("updateMouseUI", this.info.mouseCfg);
-      } catch (error) {
-        console.error("Failed to sync sensor mode to device:", error);
-      }
+      try { await HIDHandle.Set_MS_SensorMode(mode); }
+      catch (error) { console.error("Failed to sync sensor mode:", error); }
     },
-
     async syncLODToDevice(lod) {
       if (!this.isDeviceConnected) return;
-      
-      try {
-        await HIDHandle.Set_MS_LOD(lod);
-        this.$bus.$emit("updateMouseUI", this.info.mouseCfg);
-      } catch (error) {
-        console.error("Failed to sync LOD to device:", error);
-      }
+      try { await HIDHandle.Set_MS_LOD(lod); }
+      catch (error) { console.error("Failed to sync LOD:", error); }
     },
-
     async syncPerformanceStateToDevice(state) {
       if (!this.isDeviceConnected) return;
-      
-      try {
-        await HIDHandle.Set_MS_PerformanceState(state ? 1 : 0);
-        this.$bus.$emit("updateMouseUI", this.info.mouseCfg);
-      } catch (error) {
-        console.error("Failed to sync performance state to device:", error);
-      }
+      try { await HIDHandle.Set_MS_PerformanceState(state ? 1 : 0); }
+      catch (error) { console.error("Failed to sync performance state:", error); }
     },
-
     async syncPerformanceToDevice(performance) {
       if (!this.isDeviceConnected) return;
-      
-      try {
-        await HIDHandle.Set_MS_LightOffTime(performance);
-        this.$bus.$emit("updateMouseUI", this.info.mouseCfg);
-      } catch (error) {
-        console.error("Failed to sync performance to device:", error);
-      }
+      try { await HIDHandle.Set_MS_LightOffTime(performance); }
+      catch (error) { console.error("Failed to sync performance/sleep:", error); }
     },
-
     async syncRippleToDevice(enabled) {
       if (!this.isDeviceConnected) return;
-      
-      try {
-        await HIDHandle.Set_MS_Ripple(enabled ? 1 : 0);
-        this.$bus.$emit("updateMouseUI", this.info.mouseCfg);
-      } catch (error) {
-        console.error("Failed to sync ripple to device:", error);
-      }
+      try { await HIDHandle.Set_MS_Ripple(enabled ? 1 : 0); }
+      catch (error) { console.error("Failed to sync ripple:", error); }
     },
-
     async syncAngleToDevice(enabled) {
       if (!this.isDeviceConnected) return;
-      
-      try {
-        await HIDHandle.Set_MS_Angle(enabled ? 1 : 0);
-        this.$bus.$emit("updateMouseUI", this.info.mouseCfg);
-      } catch (error) {
-        console.error("Failed to sync angle to device:", error);
-      }
+      try { await HIDHandle.Set_MS_Angle(enabled ? 1 : 0); }
+      catch (error) { console.error("Failed to sync angle:", error); }
     },
+         async syncMotionSyncToDevice(enabled) {
+       if (!this.isDeviceConnected) return;
+       try { await HIDHandle.Set_MS_MotionSync(enabled ? 1 : 0); }
+       catch (error) { console.error("Failed to sync motion sync:", error); }
+     },
+     async syncSleepTimerToDevice(timer) {
+       if (!this.isDeviceConnected) return;
+       try { await HIDHandle.Set_MS_LightOffTime(timer); }
+       catch (error) { console.error("Failed to sync sleep timer:", error); }
+     },
 
-    async syncMotionSyncToDevice(enabled) {
-      if (!this.isDeviceConnected) return;
-      
-      try {
-        await HIDHandle.Set_MS_MotionSync(enabled ? 1 : 0);
-        this.$bus.$emit("updateMouseUI", this.info.mouseCfg);
-      } catch (error) {
-        console.error("Failed to sync motion sync to device:", error);
-      }
-    },
+    // UI Handlers: These now ONLY commit to Vuex state.
+    handleSensorModeChange() { this.setSensorMode(this.sensorMode); },
+    handleLODClick(value) { this.setSensorLOD(value); },
+    handlePerformanceStateChange() { this.setSensorPerformanceState(this.sensorPerformanceState); },
+         handleSleepTimerClick(value) { this.setSensorSleepTimer(value); },
+    handleRippleClick() { this.setSensorRipple(!this.sensorRipple); },
+    handleAngleClick() { this.setSensorAngle(!this.sensorAngle); },
+    handleMotionSyncClick() { this.setSensorMotionSync(!this.sensorMotionSync); },
 
-    // UI event handlers - these now update Vuex state
-    async handleSensorModeChange() {
-      await this.syncSensorModeToDevice(this.sensorMode);
-    },
-
-    setCorderMode(result) {
-      if (result) {
-        this.setSensorMode(256); // Corded mode
-      } else {
-        this.setSensorMode(this.lastSensorMode); // Restore previous mode
-      }
-    },
-
-    async handleLODClick(value) {
-      this.setSensorLOD(value);
-    },
-
-    async handleLODChange() {
-      await this.syncLODToDevice(this.sensorLOD);
-    },
-
-    async handlePerformanceStateChange() {
-      await this.syncPerformanceStateToDevice(this.sensorPerformanceState);
-    },
-
-    async handlePerformanceChange() {
-      await this.syncPerformanceToDevice(this.sensorPerformance);
-    },
-
-    async handleSleepTimerClick(value) {
-      this.setSensorPerformance(value);
-    },
-
-    getCurrentTimerText() {
-      const option = this.performanceOptions.find(p => p.value === this.sensorPerformance);
-      return option ? option.option : 'Unknown';
-    },
-
-    // Test all sleep timer options (for debugging)
-    testAllSleepTimers() {
-      // This method can be used for testing sleep timer values
-      // Remove or comment out in production
-    },
-
-    async handleRippleClick() {
-      this.setSensorRipple(!this.sensorRipple);
-    },
-
-    async handleAngleClick() {
-      this.setSensorAngle(!this.sensorAngle);
-    },
-
-    async handleMotionSyncClick() {
-      this.setSensorMotionSync(!this.sensorMotionSync);
-    },
-
-    // Sync sensor data from device to Vuex
+    // Utility and Initialization
+    initializeFromVuex() { this.loadSettingsFromLocalStorage(); },
+         getCurrentTimerText() {
+       const option = this.performanceOptions.find(p => p.value === this.sensorSleepTimer);
+       return option ? option.option : 'Unknown';
+     },
     syncSensorFromDevice(sensor) {
+      if (!sensor) return;
       this.isUpdatingFromDevice = true;
-
       try {
-        const sensorSettings = {};
-
-        if (sensor.sensorMode !== undefined) {
-          sensorSettings.sensorMode = sensor.sensorMode;
-        }
-        if (sensor.lod !== undefined) {
-          sensorSettings.lod = sensor.lod;
-        }
-        if (sensor.performanceState !== undefined) {
-          sensorSettings.performanceState = Boolean(sensor.performanceState);
-        }
-        if (sensor.performance !== undefined) {
-          sensorSettings.performance = sensor.performance;
-        }
-        if (sensor.ripple !== undefined) {
-          sensorSettings.ripple = Boolean(sensor.ripple);
-        }
-        if (sensor.angle !== undefined) {
-          sensorSettings.angle = Boolean(sensor.angle);
-        }
-        if (sensor.motionSync !== undefined) {
-          sensorSettings.motionSync = Boolean(sensor.motionSync);
-        }
-
-        // Update Vuex store
-        this.updateSensorSettings(sensorSettings);
-
-        // Save to localStorage
+                 const settings = {
+           sensorMode: sensor.sensorMode,
+           lod: sensor.lod,
+           performanceState: Boolean(sensor.performanceState),
+           performance: sensor.performance,
+           sleepTimer: sensor.performance, // Map device performance to sleepTimer
+           ripple: Boolean(sensor.ripple),
+           angle: Boolean(sensor.angle),
+           motionSync: Boolean(sensor.motionSync)
+         };
+        this.$store.commit('settings/UPDATE_SENSOR_SETTINGS', settings);
         this.saveSettingsToLocalStorage();
-
       } catch (error) {
-        console.error('Error syncing sensor from device:', error);
+        console.error('Error syncing from device:', error);
       } finally {
         this.isUpdatingFromDevice = false;
       }
     },
-
-    // Apply current Vuex settings to the device (when we have persisted settings)
     async applyVuexSettingsToDevice() {
       if (!this.isDeviceConnected) return;
-      
-      try {
-        // Apply all current Vuex settings to device
-        await HIDHandle.Set_MS_SensorMode(this.sensorMode);
-        await HIDHandle.Set_MS_LOD(this.sensorLOD);
-        await HIDHandle.Set_MS_PerformanceState(this.sensorPerformanceState ? 1 : 0);
-        await HIDHandle.Set_MS_LightOffTime(this.sensorPerformance);
-        await HIDHandle.Set_MS_Ripple(this.sensorRipple ? 1 : 0);
-        await HIDHandle.Set_MS_Angle(this.sensorAngle ? 1 : 0);
-        await HIDHandle.Set_MS_MotionSync(this.sensorMotionSync ? 1 : 0);
-        
-        // Update UI
-        this.$bus.$emit("updateMouseUI", this.info.mouseCfg);
-        
-      } catch (error) {
+             try {
+         await this.syncSensorModeToDevice(this.sensorMode);
+         await this.syncLODToDevice(this.sensorLOD);
+         await this.syncPerformanceStateToDevice(this.sensorPerformanceState);
+         await this.syncPerformanceToDevice(this.sensorPerformance);
+         await this.syncSleepTimerToDevice(this.sensorSleepTimer);
+         await this.syncRippleToDevice(this.sensorRipple);
+         await this.syncAngleToDevice(this.sensorAngle);
+         await this.syncMotionSyncToDevice(this.sensorMotionSync);
+       } catch (error) {
         console.error('Error applying Vuex settings to device:', error);
       }
     }
   },
 
   watch: {
-    // Watch Vuex state changes and sync to device
-    sensorMode(newMode, oldMode) {
-      if (!this.isUpdatingFromVuex && this.isDeviceConnected && oldMode !== undefined) {
-        this.syncSensorModeToDevice(newMode);
+    // Watchers now handle BOTH device sync and persistence.
+    sensorMode(newVal, oldVal) {
+      if (oldVal !== undefined && !this.isUpdatingFromDevice) {
+        this.syncSensorModeToDevice(newVal);
+        this.saveSettingsToLocalStorage();
       }
     },
-
-    sensorLOD(newLOD, oldLOD) {
-      if (!this.isUpdatingFromVuex && this.isDeviceConnected && oldLOD !== undefined) {
-        this.syncLODToDevice(newLOD);
+    sensorLOD(newVal, oldVal) {
+      if (oldVal !== undefined && !this.isUpdatingFromDevice) {
+        this.syncLODToDevice(newVal);
+        this.saveSettingsToLocalStorage();
       }
     },
-
-    sensorPerformanceState(newState, oldState) {
-      if (!this.isUpdatingFromVuex && this.isDeviceConnected && oldState !== undefined) {
-        this.syncPerformanceStateToDevice(newState);
+    sensorPerformanceState(newVal, oldVal) {
+      if (oldVal !== undefined && !this.isUpdatingFromDevice) {
+        this.syncPerformanceStateToDevice(newVal);
+        this.saveSettingsToLocalStorage();
       }
     },
-
-    sensorPerformance(newPerf, oldPerf) {
-      if (!this.isUpdatingFromVuex && this.isDeviceConnected && oldPerf !== undefined) {
-        this.syncPerformanceToDevice(newPerf);
+    sensorPerformance(newVal, oldVal) {
+      if (oldVal !== undefined && !this.isUpdatingFromDevice) {
+        this.syncPerformanceToDevice(newVal);
+        this.saveSettingsToLocalStorage();
       }
     },
-
-    sensorRipple(newRipple, oldRipple) {
-      if (!this.isUpdatingFromVuex && this.isDeviceConnected && oldRipple !== undefined) {
-        this.syncRippleToDevice(newRipple);
+    sensorRipple(newVal, oldVal) {
+      if (oldVal !== undefined && !this.isUpdatingFromDevice) {
+        this.syncRippleToDevice(newVal);
+        this.saveSettingsToLocalStorage();
       }
     },
-
-    sensorAngle(newAngle, oldAngle) {
-      if (!this.isUpdatingFromVuex && this.isDeviceConnected && oldAngle !== undefined) {
-        this.syncAngleToDevice(newAngle);
+    sensorAngle(newVal, oldVal) {
+      if (oldVal !== undefined && !this.isUpdatingFromDevice) {
+        this.syncAngleToDevice(newVal);
+        this.saveSettingsToLocalStorage();
       }
     },
+         sensorMotionSync(newVal, oldVal) {
+       if (oldVal !== undefined && !this.isUpdatingFromDevice) {
+         this.syncMotionSyncToDevice(newVal);
+         this.saveSettingsToLocalStorage();
+       }
+     },
+     sensorSleepTimer(newVal, oldVal) {
+       if (oldVal !== undefined && !this.isUpdatingFromDevice) {
+         this.syncSleepTimerToDevice(newVal);
+         this.saveSettingsToLocalStorage();
+       }
+     },
 
-    sensorMotionSync(newSync, oldSync) {
-      if (!this.isUpdatingFromVuex && this.isDeviceConnected && oldSync !== undefined) {
-        this.syncMotionSyncToDevice(newSync);
-      }
-    },
-
-    // Watch device changes and sync to Vuex
-    "info.mouseCfg.reportRate": {
-      handler() {
-        // Only sync if we don't have persisted settings
-        const hasPersistedSettings = localStorage.getItem('kreo_sensor_settings')
-        if (!this.isWiredDevice && !hasPersistedSettings) {
-          this.setCorderMode(this.info.mouseCfg.reportRate > 1000);
-        }
-      }
-    },
-
+    // Watch device changes and sync to Vuex ONLY if no saved settings exist.
     "info.mouseCfg.sensor": {
       handler(newSensor) {
-        // Only sync from device if we don't have persisted settings
+        // Only sync from device if we're not initializing and have no persisted settings
         const hasPersistedSettings = localStorage.getItem('kreo_sensor_settings')
-        if (newSensor && !this.isUpdatingFromDevice && !hasPersistedSettings) {
-          this.syncSensorFromDevice(newSensor);
+        if (this.isInitializing || !newSensor || this.isUpdatingFromDevice || hasPersistedSettings) {
+          return;
         }
+        this.syncSensorFromDevice(newSensor);
       },
       deep: true,
-      immediate: false // Don't run immediately on mount
+      immediate: false
     },
-
     "info.deviceOpen": {
       handler(isOpen) {
-        // Only sync on device open if we don't have persisted settings
+        if (!isOpen) return; // Only act when the device connects
+
+        // After connection, check if we have saved settings.
         const hasPersistedSettings = localStorage.getItem('kreo_sensor_settings')
-        if (isOpen && this.info.mouseCfg && this.info.mouseCfg.sensor && !hasPersistedSettings) {
+        if (hasPersistedSettings) {
+          // If we have saved settings, re-apply them to the device to ensure it's in sync.
+          console.log("Device connected. Applying persisted settings.");
+          this.applyVuexSettingsToDevice();
+        } else if (this.info.mouseCfg && this.info.mouseCfg.sensor) {
+          // If there are no saved settings, read the configuration from the device.
+          console.log("Device connected. No persisted settings found. Syncing from device.");
           this.syncSensorFromDevice(this.info.mouseCfg.sensor);
         }
       }
@@ -593,6 +484,8 @@ export default {
   },
 
   mounted() {
+    this.isInitializing = true;
+
     // Initialize from Vuex store first (loads from localStorage)
     this.initializeFromVuex();
 
@@ -602,13 +495,16 @@ export default {
     if (this.info.deviceOpen && hasPersistedSettings) {
       // Apply persisted Vuex settings to device
       this.applyVuexSettingsToDevice()
-    } else if (this.info.deviceOpen && this.info.mouseCfg && this.info.mouseCfg.sensor && !hasPersistedSettings) {
+    } else if (this.info.deviceOpen && this.info.mouseCfg && this.info.mouseCfg.sensor) {
       // Only sync from device if no persisted settings
       this.syncSensorFromDevice(this.info.mouseCfg.sensor);
     }
 
     // Listen for mouse UI updates
     this.$bus.$on("updateMouseUI", cfg => {
+      // If we are initializing, ignore incoming updates to prevent reverting state
+      if (this.isInitializing) return;
+
       const hasPersistedSettings = localStorage.getItem('kreo_sensor_settings')
       if (cfg.sensor && !this.isUpdatingFromDevice && !hasPersistedSettings) {
         this.syncSensorFromDevice(cfg.sensor);
@@ -638,6 +534,11 @@ export default {
         }
       }
     });
+
+    // End the initialization phase after a short delay
+    setTimeout(() => {
+      this.isInitializing = false;
+    }, 1500); // 1.5 second quiet period
   },
 
   beforeDestroy() {

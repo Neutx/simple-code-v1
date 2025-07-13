@@ -63,12 +63,12 @@ export default {
           shortLabel: 'Sensor',
           icon: 'ri:sensor-line'
         },
-        {
-          id: 'rgb',
-          label: 'RGB settings',
-          shortLabel: 'RGB',
-          icon: 'tabler:color-filter'
-        }
+        // {
+        //   id: 'rgb',
+        //   label: 'RGB settings',
+        //   shortLabel: 'RGB',
+        //   icon: 'tabler:color-filter'
+        // }
       ]
     }
   },

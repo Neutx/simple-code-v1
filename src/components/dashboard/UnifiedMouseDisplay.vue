@@ -7,21 +7,21 @@
       <!-- Left side labels and lines -->
       <div class="label-group left-labels">
         <!-- Left Click -->
-        <div class="label-item" :class="{ active: selectedKey === 'left-click' }" @click="selectKey('left-click')">
+        <div class="label-item" :class="{ 'highlighted': highlightedKey === 'left-click' }" @click="selectKey('left-click')">
           <span class="label-text">Left click</span>
           <div class="label-line"></div>
           <div class="label-dot"></div>
         </div>
         
         <!-- Mouse Button 4 -->
-        <div class="label-item" :class="{ active: selectedKey === 'mouse-button-4' }" @click="selectKey('mouse-button-4')">
+        <div class="label-item" :class="{ 'highlighted': highlightedKey === 'mouse-button-4' }" @click="selectKey('mouse-button-4')">
           <span class="label-text">Mouse button 4</span>
           <div class="label-line"></div>
           <div class="label-dot"></div>
         </div>
         
         <!-- Mouse Button 5 -->
-        <div class="label-item" :class="{ active: selectedKey === 'mouse-button-5' }" @click="selectKey('mouse-button-5')">
+        <div class="label-item" :class="{ 'highlighted': highlightedKey === 'mouse-button-5' }" @click="selectKey('mouse-button-5')">
           <span class="label-text">Mouse button 5</span>
           <div class="label-line"></div>
           <div class="label-dot"></div>
@@ -41,14 +41,14 @@
       <!-- Right side labels and lines -->
       <div class="label-group right-labels">
         <!-- Middle Click -->
-        <div class="label-item" :class="{ active: selectedKey === 'middle-click' }" @click="selectKey('middle-click')">
+        <div class="label-item" :class="{ 'highlighted': highlightedKey === 'middle-click' }" @click="selectKey('middle-click')">
           <div class="label-dot"></div>
           <div class="label-line"></div>
           <span class="label-text">Middle click</span>
         </div>
         
         <!-- Right Click -->
-        <div class="label-item" :class="{ active: selectedKey === 'right-click' }" @click="selectKey('right-click')">
+        <div class="label-item" :class="{ 'highlighted': highlightedKey === 'right-click' }" @click="selectKey('right-click')">
           <div class="label-dot"></div>
           <div class="label-line"></div>
           <span class="label-text">Right click</span>
@@ -100,6 +100,10 @@ export default {
     mouseImageSrc: {
       type: String,
       default: '/mice/ikarus.svg'
+    },
+    highlightedKey: {
+      type: String,
+      default: null
     }
   },
   data() {
@@ -222,7 +226,7 @@ export default {
     }
   }
   
-  &.active {
+  &.highlighted {
     .label-text {
       color: #A278FD;
       font-weight: 600;

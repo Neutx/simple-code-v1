@@ -1,6 +1,9 @@
 <template>
   <transition name="slide-in" appear>
-    <div class="sensor-settings-panel">
+    <div 
+      class="sensor-settings-panel"
+      @mouseenter="syncWithDeviceState"
+    >
       <!-- Panel content split into two columns -->
       <div class="panel-inner">
         <!-- Left column -->
@@ -206,27 +209,23 @@ export default {
       ]
     },
 
-    // Sleep timer value mapping (based on OtherSetting.vue)
+    // Sleep timer value mapping (EXACT same as OtherSetting.vue)
     sleepTimerSteps() {
       return [
-        { display: 0.17, value: 1, label: '10 sec' },   // 10sec
-        { display: 0.5, value: 3, label: '30 sec' },    // 30sec  
-        { display: 1, value: 6, label: '1 min' },       // 1min
-        { display: 2, value: 12, label: '2 mins' },     // 2min
-        { display: 5, value: 30, label: '5 mins' },     // 5min
-        { display: 10, value: 60, label: '10 mins' },   // 10min
-        { display: 15, value: 90, label: '15 mins' },   // 15min
-        { display: 20, value: 120, label: '20 mins' },  // 20min (estimated)
-        { display: 25, value: 150, label: '25 mins' },  // 25min (estimated)
-        { display: 30, value: 180, label: '30 mins' },  // 30min (estimated)
-        { display: 35, value: 210, label: '35 mins' },  // 35min (estimated)
-        { display: 40, value: 240, label: '40 mins' }   // 40min (estimated)
-      ]
+        { value: 1, label: '10 sec' },
+        { value: 3, label: '30 sec' },
+        { value: 6, label: '1 min' },
+        { value: 12, label: '2 mins' },
+        { value: 30, label: '5 mins' },
+        { value: 60, label: '10 mins' },
+        { value: 90, label: '15 mins' }
+      ];
     },
 
     // Current sleep timer index from Vuex
     sleepTimerIndex() {
-      return this.sleepTimerSteps.findIndex(step => step.value === this.sensorSleepTimer) || 2
+      const index = this.sleepTimerSteps.findIndex(step => step.value === this.sensorSleepTimer)
+      return index !== -1 ? index : 2
     },
 
       // Polling rates (Hz)
@@ -287,18 +286,35 @@ export default {
     // Initialize settings from Vuex store first
     this.initializeFromVuex()
     
-    // CRITICAL: Add a small delay to ensure Vuex is fully initialized
     this.$nextTick(() => {
-      // Then sync with connected device
-    this.initializeFromDevice()
-    
-    // Start monitoring device changes
-    this.startDeviceMonitoring()
+      // Then sync with connected device, prioritizing persisted settings
+      this.initializeFromDevice()
     })
+
+    // Listen for real-time device updates for sleep timer (matching OtherSetting.vue pattern)
+    this.$bus.$on("updateMouseUI", (value) => {
+      if (value && value.sleepTime !== undefined) {
+        // Directly update Vuex state to match device state (like OtherSetting.vue does)
+        this.isUpdatingFromDevice = true;
+        this.setSensorSleepTimer(value.sleepTime);
+        this.$nextTick(() => {
+          this.isUpdatingFromDevice = false;
+        });
+      }
+    });
+    
+    // Also listen for explicit device connection events
+    this.$bus.$on("deviceConnect", (connected) => {
+      if (connected) {
+        setTimeout(() => this.initializeFromDevice(), 500);
+      }
+    });
   },
   
   beforeDestroy() {
-    // Clean up any timers if needed
+    // Clean up event listeners
+    this.$bus.$off("updateMouseUI")
+    this.$bus.$off("deviceConnect")
   },
   
   watch: {
@@ -363,12 +379,12 @@ export default {
       }
     },
     
-    sensorSleepTimer(newTimer, oldTimer) {
-      if (!this.isUpdatingFromVuex && this.isDeviceConnected && oldTimer !== undefined) {
-        this.syncSleepTimerToDevice(newTimer)
+    sensorSleepTimer(newVal, oldVal) {
+      if (oldVal !== undefined && !this.isUpdatingFromDevice) {
+        this.syncPerformanceToDevice(newVal)
       }
-      // Auto-save to localStorage when settings change
-      if (oldTimer !== undefined) {
+      // Auto-save to localStorage whenever the setting changes
+      if (oldVal !== undefined) {
         this.saveSettingsToLocalStorage()
       }
     },
@@ -412,6 +428,7 @@ export default {
   },
   
   methods: {
+    // Vuex actions for updating state
     ...mapActions('settings', [
       'setSensorMode',
       'setSensorLOD',
@@ -430,6 +447,13 @@ export default {
       'saveSettingsToLocalStorage'
     ]),
 
+    // This function is disabled as it was causing state conflicts.
+    // State is now managed by initializing from localStorage/device on mount,
+    // and then listening to specific `updateMouseUI` events.
+    syncWithDeviceState() {
+      return;
+    },
+  
     // Initialize from Vuex store
     initializeFromVuex() {
       // Settings are already available through computed properties
@@ -488,6 +512,7 @@ export default {
         
         // Update UI
         this.$bus.$emit("updateMouseUI", this.deviceInfo.mouseCfg)
+        console.log("Successfully applied persisted Vuex settings to the device.");
         
       } catch (error) {
         console.error('Error applying Vuex settings to device:', error)
@@ -624,13 +649,27 @@ export default {
     },
 
     async syncSleepTimerToDevice(timer) {
-      if (!this.isDeviceConnected) return
-      
+      if (!this.isDeviceConnected) return;
       try {
-        await HIDHandle.Set_MS_LightOffTime(timer)
-        this.$bus.$emit("updateMouseUI", this.deviceInfo.mouseCfg)
+        await HIDHandle.Set_MS_LightOffTime(timer);
+        // This emit is PREMATURE. It broadcasts the OLD device state before the
+        // device has had time to process the change and report back. HIDHandle
+        // will emit the proper "updateMouseUI" event once it receives a
+        // confirmation from the device. Removing this line fixes the revert.
+        // this.$bus.$emit("updateMouseUI", this.deviceInfo.mouseCfg);
       } catch (error) {
-        console.error('Error syncing sleep timer to device:', error)
+        console.error("Error syncing sleep timer to device:", error);
+      }
+    },
+
+    // Add the missing syncPerformanceToDevice method (same as sleep timer)
+    async syncPerformanceToDevice(performance) {
+      if (!this.isDeviceConnected) return;
+      try {
+        await HIDHandle.Set_MS_LightOffTime(performance);
+        console.log("✅ Sleep timer/performance synced to device:", performance);
+      } catch (error) {
+        console.error("Error syncing performance/sleep timer to device:", error);
       }
     },
 
@@ -722,15 +761,26 @@ export default {
       return timerStep ? timerStep.label : 'Unknown'
     },
 
+    // Updated to match OtherSetting.vue pattern - direct device sync + Vuex update
     async selectSleepTimer(index) {
-      this.sleepDropdownOpen = false
-      
-      if (!this.isDeviceConnected) return
-      
-      const timerStep = this.sleepTimerSteps[index]
-      if (!timerStep) return
-      
-      this.setSensorSleepTimer(timerStep.value)
+      this.sleepDropdownOpen = false;
+      const timerStep = this.sleepTimerSteps[index];
+      if (timerStep) {
+        // Update Vuex state first
+        this.setSensorSleepTimer(timerStep.value);
+        // Keep performance in sync (one-way)
+        this.setSensorPerformance(timerStep.value);
+        
+        // Direct device sync (like OtherSetting.vue does)
+        if (this.isDeviceConnected) {
+          try {
+            await HIDHandle.Set_MS_LightOffTime(timerStep.value);
+            console.log("✅ Sleep timer updated directly on device:", timerStep.value);
+          } catch (error) {
+            console.error("Error updating sleep timer on device:", error);
+          }
+        }
+      }
     }
   }
 }

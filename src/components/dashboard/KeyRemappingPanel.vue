@@ -182,23 +182,6 @@
         </div>
       </div>
 
-      <!-- Inactivity Overlay -->
-      <div v-if="!isOnline && !isCreatingMacro" class="inactivity-overlay">
-        <div class="inactivity-message">
-            <div class="mouse-icon">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 5C8.13401 5 5 8.13401 5 12V18C5 19.6569 6.34315 21 8 21H16C17.6569 21 19 19.6569 19 18V12C19 8.13401 15.866 5 12 5Z" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M12 5V2" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M9 3H15" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M7 12H7.01" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M17 12H17.01" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            </div>
-            <h3>Mouse is asleep</h3>
-            <p>Shake your mouse to wake it up.</p>
-        </div>
-      </div>
-      
       <!-- Create Macro View -->
       <CreateMacroView 
         v-if="isCreatingMacro"
