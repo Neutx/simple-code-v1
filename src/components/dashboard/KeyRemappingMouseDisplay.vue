@@ -57,8 +57,7 @@
     </div>
 
     <!-- Profile Selector -->
-    <div class="profiles-wrapper" :class="{ expanded: profilesExpanded }">
-      <!-- Active profile (always visible) -->
+    <!-- <div class="profiles-wrapper" :class="{ expanded: profilesExpanded }">
       <div
         class="profile-item active"
         @click="toggleProfiles"
@@ -69,7 +68,7 @@
             <path d="M7 10L12 15L17 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </div>
-      </div>
+      </div> -->
 
       <!-- Other profiles (shown when expanded) -->
       <transition name="profiles-expand">
@@ -86,7 +85,7 @@
         </div>
       </transition>
     </div>
-  </div>
+  <!-- </div> -->
 </template>
 
 <script>

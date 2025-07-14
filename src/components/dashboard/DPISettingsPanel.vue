@@ -40,8 +40,8 @@
         <div class="slider-section" :class="{ disabled: isBrightnessDisabled }">
         <label class="slider-label">DPI light brightness</label>
         <div class="slider-container">
-          <div class="slider-track">
-              <div class="slider-fill" :style="{ width: (brightness * 10) + '%' }"></div>
+          <div class="slider-track" @click="handleBrightnessTrackClick">
+              <div class="slider-fill" :style="{ width: ((brightness - 1) / 9 * 100) + '%' }"></div>
           </div>
           <div class="slider-numbers">
             <span
@@ -61,8 +61,8 @@
         <div class="slider-section" :class="{ disabled: isSpeedDisabled }">
         <label class="slider-label">DPI light speed</label>
         <div class="slider-container">
-          <div class="slider-track">
-              <div class="slider-fill" :style="{ width: (speed * 20) + '%' }"></div>
+          <div class="slider-track" @click="handleSpeedTrackClick">
+              <div class="slider-fill" :style="{ width: ((speed - 1) / 4 * 100) + '%' }"></div>
           </div>
           <div class="slider-numbers">
             <span
@@ -116,6 +116,7 @@
                 selected: index === selectedDpiIndex 
               }"
               @click="selectDpiProfile(index)"
+              @dblclick="startEditing(index, true)"
             >
               <input 
                 v-if="editingIndex === index"
@@ -173,6 +174,7 @@
 
     <!-- Color Picker Modal -->
     <ColorPicker 
+      ref="colorPicker"
       :visible="colorPickerVisible"
       :initial-color="selectedProfileColor"
       @close="closeColorPicker"
@@ -190,23 +192,9 @@ export default {
   components: {
     ColorPicker
   },
-  props: {
-    // Accept props from parent to sync state
-    parentDpiProfiles: {
-      type: Array,
-      default: null
-    },
-    parentMaxDpiProfiles: {
-      type: Number,
-      default: null
-    },
-    parentSelectedDpiIndex: {
-      type: Number,
-      default: null
-    }
-  },
   data() {
     return {
+      deviceInfo: HIDHandle.deviceInfo,
       dropdownOpen: false,
       maxProfilesDropdownOpen: false,
       updatingFromParent: false, // Flag to prevent circular updates
@@ -219,7 +207,6 @@ export default {
       brightness: 5,
       speed: 1,
       maxDpiProfiles: 4,
-      selectedDpiIndex: 0, // Currently selected DPI profile
       editingIndex: -1, // Which DPI is being edited
       colorPickerVisible: false,
       selectedProfileIndex: 0,
@@ -238,23 +225,13 @@ export default {
     }
   },
   watch: {
-    // Watch for changes in DPI profiles and emit to parent (only if not from parent)
-    dpiProfiles: {
-      handler(newProfiles) {
-        if (!this.updatingFromParent) {
-          this.$emit('dpi-profiles-updated', newProfiles);
-        }
-      },
-      deep: true
-    },
     maxDpiProfiles(newMax) {
       if (!this.updatingFromParent) {
-        this.$emit('max-profiles-changed', newMax);
+        this.$emit('max-profiles-updated', newMax);
       }
-    },
-    selectedDpiIndex(newIndex) {
-      if (!this.updatingFromParent) {
-        this.$emit('dpi-selected', newIndex);
+      // Ensure selectedDpiIndex is not out of bounds
+      if (this.selectedDpiIndex >= newMax) {
+        // The device state will handle the reset, no need to manually set it here.
       }
     },
     // Watch for parent prop changes
@@ -287,7 +264,7 @@ export default {
       handler(newIndex) {
         if (newIndex !== null && newIndex !== this.selectedDpiIndex) {
           this.updatingFromParent = true;
-          this.selectedDpiIndex = newIndex;
+          // this.selectedDpiIndex = newIndex; // Replaced by computed property
           this.$nextTick(() => {
             this.updatingFromParent = false;
           });
@@ -297,6 +274,9 @@ export default {
     }
   },
    computed: {
+    selectedDpiIndex() {
+      return this.deviceInfo.mouseCfg?.currentDpi ?? 0;
+    },
     selectedModeText() {
       const selected = this.lightModes.find(m => m.value === this.mode);
       return selected ? selected.option : 'Off';
@@ -310,9 +290,9 @@ export default {
   },
   methods: {
     // Add method to update selected DPI from external source
-    updateSelectedDpi(index) {
-      this.selectedDpiIndex = index;
-    },
+    // updateSelectedDpi(index) {
+    //   // this.selectedDpiIndex = index; // Replaced by computed property
+    // },
     
     toggleDropdown() {
       this.dropdownOpen = !this.dropdownOpen
@@ -329,9 +309,10 @@ export default {
         await HIDHandle.Set_MS_MaxDPI(num);
         console.log('✅ Max DPI profiles updated on device:', num);
         
+        let newDpiIndex = this.selectedDpiIndex;
         // If current selection is beyond new max, reset to first profile and update device
         if (this.selectedDpiIndex >= num) {
-          this.selectedDpiIndex = 0;
+          newDpiIndex = 0;
           await HIDHandle.Set_MS_CurrentDPI(0);
           console.log('✅ Current DPI reset to 0 due to max change');
         }
@@ -339,7 +320,7 @@ export default {
         // Update device state
         if (HIDHandle.deviceInfo && HIDHandle.deviceInfo.mouseCfg) {
           HIDHandle.deviceInfo.mouseCfg.maxDpiStage = num;
-          HIDHandle.deviceInfo.mouseCfg.currentDpi = this.selectedDpiIndex;
+          HIDHandle.deviceInfo.mouseCfg.currentDpi = newDpiIndex;
         }
         
         // Emit update event
@@ -351,7 +332,7 @@ export default {
     async selectDpiProfile(index) {
       if (index >= this.maxDpiProfiles) return;
       
-      this.selectedDpiIndex = index;
+      // The UI will update reactively from HIDHandle.deviceInfo
       
       // Update device to use this DPI profile (current DPI)
       try {
@@ -370,8 +351,10 @@ export default {
         console.error('Error updating current DPI on device:', error);
       }
     },
-    startEditing(index) {
-      if (index >= this.maxDpiProfiles || index !== this.selectedDpiIndex) return;
+    startEditing(index, force = false) {
+      if (index >= this.maxDpiProfiles) return;
+      if (!force && index !== this.selectedDpiIndex) return;
+
       this.editingIndex = index;
       this.$nextTick(() => {
         if (this.$refs.dpiInput && this.$refs.dpiInput[0]) {
@@ -408,6 +391,19 @@ export default {
         console.error('Error updating DPI light mode:', error);
       }
     },
+    handleBrightnessTrackClick(event) {
+      if (this.isBrightnessDisabled) return;
+
+      const track = event.currentTarget;
+      const rect = track.getBoundingClientRect();
+      const clickX = event.clientX - rect.left;
+      const percent = Math.max(0, Math.min(1, clickX / rect.width));
+      
+      // The range is 1-10. There are 9 intervals between 10 points.
+      const value = Math.round(percent * 9) + 1;
+      
+      this.handleBrightnessChange(value);
+    },
     async handleBrightnessChange(value) {
       if (this.isBrightnessDisabled) return;
       
@@ -426,6 +422,19 @@ export default {
       } catch (error) {
         console.error('Error updating DPI light brightness:', error);
       }
+    },
+    handleSpeedTrackClick(event) {
+      if (this.isSpeedDisabled) return;
+      
+      const track = event.currentTarget;
+      const rect = track.getBoundingClientRect();
+      const clickX = event.clientX - rect.left;
+      const percent = Math.max(0, Math.min(1, clickX / rect.width));
+
+      // The range is 1-5. There are 4 intervals between 5 points.
+      const value = Math.round(percent * 4) + 1;
+
+      this.handleSpeedChange(value);
     },
     async handleSpeedChange(value) {
       if (this.isSpeedDisabled) return;
@@ -495,7 +504,7 @@ export default {
       
       // Update local state first
       this.$set(this.dpiProfiles[this.selectedProfileIndex], 'color', color);
-      this.colorPickerVisible = false;
+      // this.colorPickerVisible = false; // Removed to keep picker open
       
       console.log('✅ Local state updated:', this.dpiProfiles[this.selectedProfileIndex]);
       
@@ -594,6 +603,15 @@ export default {
       if (this.$refs.maxProfilesDropdownWrapper && !this.$refs.maxProfilesDropdownWrapper.contains(event.target)) {
         this.maxProfilesDropdownOpen = false;
       }
+      // Close color picker on outside click
+      if (this.colorPickerVisible && this.$refs.colorPicker && !this.$refs.colorPicker.$el.contains(event.target)) {
+        // Check if the click was on a color swatch, which should not close the picker.
+        // We identify swatches by checking if the click target or its parent has the 'profile-color' class.
+        const targetIsSwatch = event.target.classList.contains('profile-color') || (event.target.parentElement && event.target.parentElement.classList.contains('profile-color'));
+        if (!targetIsSwatch) {
+          this.closeColorPicker();
+        }
+      }
     },
     updateFromDeviceState() {
       if (HIDHandle.deviceInfo && HIDHandle.deviceInfo.deviceOpen) {
@@ -626,9 +644,7 @@ export default {
             this.maxDpiProfiles = mouseCfg.maxDpiStage;
           }
           
-          if (mouseCfg.currentDpi !== undefined) {
-            this.selectedDpiIndex = mouseCfg.currentDpi;
-          }
+          // No need to set selectedDpiIndex here, it's computed now.
           
           console.log('🔄 DPI Settings updated from device state:', {
             maxDpi: this.maxDpiProfiles,
@@ -682,9 +698,7 @@ export default {
           this.maxDpiProfiles = mouseCfg.maxDpiStage;
         }
         
-        if (mouseCfg.currentDpi !== undefined) {
-          this.selectedDpiIndex = mouseCfg.currentDpi;
-        }
+        // No need to set selectedDpiIndex here, it's computed now.
         
         console.log('🔄 DPI Settings updated via updateMouseUI:', {
           maxDpi: this.maxDpiProfiles,
@@ -693,11 +707,8 @@ export default {
       }
     });
     
-    // Listen for current DPI updates (like in reference DpiSetting.vue)
-    this.$bus.$on("updateCurrentDPI", index => {
-      this.selectedDpiIndex = index;
-      console.log('🎯 Current DPI updated via updateCurrentDPI:', index);
-    });
+    // The selectedDpiIndex is now computed, so direct update events are not needed
+    // this.$bus.$on("updateCurrentDPI", index => { ... });
 
     // Also listen for device connection events
     this.$bus.$on("deviceConnect", (connected) => {
@@ -709,13 +720,16 @@ export default {
       }
     });
 
+    // this.$bus.$on('dpiStageChanged', (newIndex) => { ... });
+
     document.addEventListener('click', this.closeOnClickOutside);
   },
   beforeDestroy() {
     document.removeEventListener('click', this.closeOnClickOutside);
     this.$bus.$off("updateMouseUI");
     this.$bus.$off("deviceConnect");
-    this.$bus.$off("updateCurrentDPI");
+    // this.$bus.$off("updateCurrentDPI");
+    // this.$bus.$off('dpiStageChanged');
   }
 }
 </script>

@@ -54,7 +54,7 @@
         </div>
         <div class="flex justify-start items-start gap-2.5">
           <div class="status-icon">
-            <img src="/icons/dpi.svg" alt="DPI" />
+            <img src="/icons/DPI.svg" alt="DPI" />
           </div>
           <div class="w-16 h-6 justify-center">
             <span class="text-white/50 text-lg font-semibold font-['DM_Sans']">DPI:</span>
