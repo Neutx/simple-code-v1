@@ -77,7 +77,7 @@ export const createRegisterComposable = (store, router, message) => {
       })
       
       message.success('Account created successfully!')
-      router.push('/initialize')
+      router.push('/login')
     } catch (error) {
       message.error(error.message || 'Registration failed')
     }
@@ -89,7 +89,7 @@ export const createRegisterComposable = (store, router, message) => {
     try {
       await store.dispatch('auth/loginWithGoogle')
       message.success('Account created successfully!')
-      router.push('/initialize')
+      router.push('/login')
     } catch (error) {
       message.error(error.message || 'Google registration failed')
     } finally {

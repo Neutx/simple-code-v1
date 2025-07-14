@@ -507,7 +507,7 @@ export default {
   right: 0;
   width: clamp(800px, 80vw, 1127px);
   height: 96px;
-  z-index: 15;
+  z-index: -1;
   pointer-events: auto;
 }
 
