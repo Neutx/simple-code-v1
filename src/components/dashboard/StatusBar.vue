@@ -12,7 +12,7 @@
 
     <div class="status-item">
       <div class="status-icon">
-        <img src="/icons/dpi.svg" alt="DPI" />
+        <img src="/icons/DPI.svg" alt="DPI" />
       </div>
       <div class="status-text">
         <span class="status-label">DPI: </span>

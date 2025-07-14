@@ -47,19 +47,19 @@ export default {
         },
         {
           id: 'dpi',
-          label: 'DPI settings',
+          label: 'DPI Settings',
           shortLabel: 'DPI',
           icon: `${process.env.BASE_URL}icons/DPI.svg`
         },
         {
           id: 'keys',
-          label: 'Key remapping',
+          label: 'Key Remapping',
           shortLabel: 'Keys',
           icon: 'solar:mouse-outline'
         },
         {
           id: 'sensor',
-          label: 'Sensor settings',
+          label: 'Sensor Settings',
           shortLabel: 'Sensor',
           icon: 'ri:sensor-line'
         },

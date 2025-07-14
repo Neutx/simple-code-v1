@@ -46,6 +46,31 @@
                     </svg>
                 </div>
             </div>
+            
+            <div class="separator"></div>
+
+            <!-- Debounce Time Setting -->
+            <div class="key-function-item">
+              <span class="key-name">Debounce Time</span>
+              <div class="dropdown-container" ref="debounceDropdownContainer" @click="toggleDebounceDropdown" :class="{ disabled: !isOnline }">
+                <span class="dropdown-value">{{ debounceTime }} ms</span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" class="dropdown-icon" :class="{ rotated: debounceDropdownOpen }">
+                  <path d="M7 10L12 15L17 10" stroke="#D4D4D8" stroke-width="1.5" />
+                </svg>
+                <transition name="debounce-dropdown">
+                  <div v-if="debounceDropdownOpen" class="custom-dropdown-options">
+                    <div 
+                      v-for="time in 21" 
+                      :key="time - 1"
+                      class="custom-dropdown-option"
+                      @click.stop="selectDebounceTime(time - 1)"
+                    >
+                      {{ time - 1 }} ms
+                    </div>
+                  </div>
+                </transition>
+              </div>
+            </div>
           </div>
 
           <!-- Right column - Detail View for selected item -->
@@ -210,6 +235,7 @@ export default {
   data() {
     return {
       selectedKey: null,
+      debounceDropdownOpen: false,
       isRecording: false,
       isNamingMacro: false,
       isCreatingMacro: false, // Controls CreateMacroView visibility
@@ -233,17 +259,16 @@ export default {
         { value: 'middle-click', label: 'Middle click' },
         { value: 'back', label: 'Back' },
         { value: 'forward', label: 'Forward' },
-        { value: 'dpi-up', label: 'DPI Up' },
-        { value: 'dpi-down', label: 'DPI Down' },
-        { value: 'dpi-cycle', label: 'DPI Cycle' },
-        { value: 'profile-cycle', label: 'Profile Cycle' },
         { value: 'macro', label: 'Macro' },
         { value: 'disabled', label: 'Disabled' }
       ]
     }
   },
   computed: {
-    ...mapGetters('settings', ['keyMappings']),
+    ...mapGetters('settings', [
+      'keyMappings',
+      'debounceTime'
+    ]),
     ...mapGetters('macros', ['allMacros', 'isLoading', 'isSyncing', 'error']),
     ...mapGetters('device', ['isConnected', 'isOnline']),
     
@@ -262,6 +287,9 @@ export default {
     }
   },
   async mounted() {
+    // Load persisted settings from localStorage into the Vuex store
+    this.$store.dispatch('settings/loadSettingsFromLocalStorage');
+
     this.loadKeyMappings()
     
     // Load macros from Firebase when component mounts
@@ -284,13 +312,23 @@ export default {
 
     this.updateButtonLabelsFromDevice()
     
-    this.$bus.$on("updateMouseUI", () => {
-      this.updateButtonLabelsFromDevice()
-    })
+    // Listen for device state updates and sync them to the store
+    this.$bus.$on("updateMouseUI", this.handleDeviceUpdate);
+
+    document.addEventListener('click', this.closeOnClickOutside);
   },
   beforeDestroy() {
     // Clean up event listener
-    this.$bus.$off("updateMouseUI")
+    this.$bus.$off("updateMouseUI", this.handleDeviceUpdate);
+    document.removeEventListener('click', this.closeOnClickOutside);
+  },
+  watch: {
+    debounceTime(newTime, oldTime) {
+      // Sync to device whenever the Vuex state changes, if it's actually a new value.
+      if (newTime !== oldTime) {
+        this.handleDebounceTimeChange(newTime);
+      }
+    }
   },
   methods: {
     ...mapActions('macros', [
@@ -300,9 +338,39 @@ export default {
       'deleteMacro',
       'importMacrosFromLocalStorage'
     ]),
+    ...mapActions('settings', [
+      'setDebounceTime'
+    ]),
     
+    handleDeviceUpdate(mouseCfg) {
+      this.updateButtonLabelsFromDevice();
+
+      // Sync debounce time from device to store, but only if the value is different
+      // to prevent an infinite loop with the watcher.
+      if (mouseCfg && mouseCfg.debounceTime !== undefined && this.debounceTime !== mouseCfg.debounceTime) {
+        this.setDebounceTime(mouseCfg.debounceTime);
+      }
+    },
+
+    closeOnClickOutside(event) {
+      if (this.$refs.debounceDropdownContainer && !this.$refs.debounceDropdownContainer.contains(event.target)) {
+        this.debounceDropdownOpen = false;
+      }
+    },
+
+    toggleDebounceDropdown() {
+      if (this.isOnline) {
+        this.debounceDropdownOpen = !this.debounceDropdownOpen;
+      }
+    },
+
+    selectDebounceTime(time) {
+      this.setDebounceTime(time); // Dispatch action to update Vuex store
+      this.debounceDropdownOpen = false;
+    },
+
     updateButtonLabelsFromDevice() {
-      if (!this.isConnected || !HIDHandle.deviceInfo.mouseCfg.keys) {
+      if (!this.isConnected || !HIDHandle.deviceInfo.mouseCfg) {
         return
       }
 
@@ -415,8 +483,14 @@ export default {
     },
     
     selectKey(key) {
-      this.selectedKey = key;
-      this.$emit('panel-state-changed', { isExpanded: true, selectedKey: key });
+      if (this.selectedKey === key) {
+        this.deselectKey();
+      } else {
+        this.selectedKey = key;
+        // Reset selected function when changing keys
+        this.selectedFunction = null;
+        this.$emit('panel-state-changed', { isExpanded: true, selectedKey: this.selectedKey });
+      }
     },
     deselectKey() {
       this.selectedKey = null;
@@ -424,7 +498,7 @@ export default {
       this.selectedMacroId = null;
       this.$emit('panel-state-changed', { isExpanded: false, selectedKey: null });
     },
-    selectFunction(key, option) {
+    async selectFunction(key, option) {
       if (option.value === 'macro') {
         // Toggle macro list visibility
         this.selectedFunction = this.selectedFunction === 'macro' ? null : 'macro'
@@ -626,6 +700,20 @@ export default {
         hour: '2-digit', 
         minute: '2-digit' 
       });
+    },
+
+    async handleDebounceTimeChange(time) {
+      if (!this.isConnected) {
+        // No need for a message here, UI should reflect disabled state
+        return;
+      }
+      try {
+        await HIDHandle.Set_MS_DebounceTime(time);
+        // Toast message removed as per request
+      } catch (error) {
+        console.error('Error setting debounce time:', error);
+        this.$message.error('Failed to set debounce time.');
+      }
     }
   }
 }
@@ -795,6 +883,91 @@ export default {
   .arrow-icon {
     color: rgba(255, 255, 255, 0.5);
   }
+}
+
+.dropdown-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  position: relative;
+  min-width: 90px;
+  justify-content: flex-end;
+
+  &.disabled {
+    cursor: not-allowed;
+    .dropdown-value, .dropdown-icon {
+      color: #71717A;
+    }
+  }
+}
+
+.dropdown-value {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 16px;
+  color: #a278fd;
+  white-space: nowrap;
+}
+
+.dropdown-icon {
+  color: #D4D4D8;
+  transition: transform 0.3s ease;
+
+  &.rotated {
+    transform: rotate(180deg);
+  }
+}
+
+.custom-dropdown-options {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  width: 100px;
+  max-height: 200px;
+  background: #262626;
+  border-radius: 8px;
+  z-index: 10;
+  overflow-y: auto;
+  margin-bottom: 4px;
+  display: flex;
+  flex-direction: column;
+  transform-origin: bottom center;
+  box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.4);
+  
+  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar-track { background: #1a1a1a; border-radius: 2px; }
+  &::-webkit-scrollbar-thumb { background: #a278fd; border-radius: 2px; }
+  &::-webkit-scrollbar-thumb:hover { background: #9266e6; }
+}
+
+.custom-dropdown-option {
+  height: 32px;
+  flex-shrink: 0;
+  background: #262626;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: white;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  padding: 0 8px;
+
+  &:hover {
+    background: #404040;
+  }
+}
+
+.debounce-dropdown-enter-active, .debounce-dropdown-leave-active {
+  transition: all 0.2s ease-out;
+}
+.debounce-dropdown-enter, .debounce-dropdown-leave-to {
+  opacity: 0;
+  transform: translateY(5px);
 }
 
 .option-item {

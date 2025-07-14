@@ -1,6 +1,7 @@
 import Vue from 'vue'
 import VueRouter from 'vue-router'
 import store from '@/stores'
+import HIDHandle from '@/assets/js/HIDHandle' // Import HIDHandle
 import LoginView from '@/views/auth/LoginView.vue'
 import RegisterView from '@/views/auth/RegisterView.vue'
 import InitializeView from '@/views/pages/InitializeView.vue'
@@ -80,6 +81,13 @@ const router = new VueRouter({
 router.beforeEach((to, from, next) => {
   const isAuthenticated = store.getters['auth/isAuthenticated']
   const isInitialized = store.getters['auth/initialized']
+  const isDeviceConnected = HIDHandle.deviceInfo.deviceOpen // Check device connection directly
+
+  // If trying to access dashboard routes without a device, redirect to initialize
+  if (to.path.startsWith('/dashboard') && !isDeviceConnected) {
+    next('/initialize')
+    return
+  }
   
   // If auth is not initialized yet, wait for it
   if (!isInitialized) {

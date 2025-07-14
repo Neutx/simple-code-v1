@@ -1,14 +1,10 @@
 <template>
-  <div class="dashboard-container">
+  <div class="dashboard-container" :data-active-tab="activeTab">
     <!-- Inactivity Overlay -->
     <div v-if="!isOnline" class="inactivity-overlay">
       <div class="inactivity-message">
           <div class="mouse-icon">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 5C8.13401 5 5 8.13401 5 12V18C5 19.6569 6.34315 21 8 21H16C17.6569 21 19 19.6569 19 18V12C19 8.13401 15.866 5 12 5Z" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                  <path d="M12 5V2" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                  <path d="M9 3H15" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
+            <IconifyIcon icon="solar:mouse-outline" />
           </div>
           <h3>Mouse is asleep</h3>
           <p>Shake your mouse to wake it up.</p>
@@ -40,29 +36,21 @@
 
     <!-- Main Content Area -->
     <div class="dashboard-main">
-      <!-- Mouse Visualization - Regular Home -->
-      <div class="mouse-section" v-if="activeTab === 'home'">
-        <MouseVisualization :src="mouseImageSrc" />
-      </div>
-      
-      <!-- Animated Mouse for DPI Settings -->
-      <div class="animated-mouse-section" v-if="activeTab === 'dpi'">
-        <AnimatedMouseVisualization 
-          :device-model="deviceModel"
-          :mouse-image="mouseImageSrc"
-          :is-d-p-i-mode="true"
-        />
-      </div>
+      <!-- Unified Mouse Display -->
+      <UnifiedMouseDisplay
+        v-if="activeTab !== 'sensor' && activeTab !== 'keys'"
+        :mode="activeTab"
+        :device-model="deviceModel"
+        :mouse-image-src="mouseImageSrc"
+        :is-panel-expanded="isKeyRemappingPanelExpanded"
+      />
       
       <!-- DPI Control Bar (only visible in DPI mode) -->
-      <div class="dpi-control-section" v-if="activeTab === 'dpi'">
-        <DPIControlBar 
-          :active-d-p-i="activeDPI"
-          @dpi-changed="handleDPIChange"
-        />
+      <div class="dpi-control-section" v-show="activeTab === 'dpi'">
+        <DPIControlBar />
       </div>
       
-      <!-- DPI Settings Panel (only visible in DPI mode) -->
+      <!-- Panels for different tabs -->
       <DPISettingsPanel v-if="activeTab === 'dpi'" />
       
       <!-- Sensor Mouse Display -->
@@ -94,21 +82,6 @@
       
       <!-- Key Remapping Panel (only visible in keys mode) -->
       <KeyRemappingPanel v-if="activeTab === 'keys'" @key-mapping-update="handleKeyMappingUpdate" @panel-state-changed="handlePanelStateChange" />
-      
-      <!-- RGB Mouse Display -->
-      <div class="rgb-mouse-section" v-if="activeTab === 'rgb'">
-        <SensorMouseDisplay 
-          :device-model="deviceModel" 
-          :mouse-image-src="mouseImageSrc"
-          :profileCount="4"
-          :activeProfile="1"
-          :currentDPI="currentDPI"
-          :pollingRate="pollingRate"
-          :batteryLevel="batteryLevel"
-        />
-      </div>
-      
-      <!-- RGB Settings Panel (only visible in RGB mode) -->
       <RGBSettingsPanel v-if="activeTab === 'rgb'" />
       
       <!-- Router View for Tab Content -->
@@ -135,8 +108,7 @@
 import { mapGetters } from 'vuex'
 import HIDHandle from '@/assets/js/HIDHandle'
 import NavigationTabs from '@/components/dashboard/NavigationTabs.vue'
-import MouseVisualization from '@/components/dashboard/MouseVisualization.vue'
-import AnimatedMouseVisualization from '@/components/dashboard/AnimatedMouseVisualization.vue'
+import UnifiedMouseDisplay from '@/components/dashboard/UnifiedMouseDisplay.vue' // Import unified component
 import DPIControlBar from '@/components/dashboard/DPIControlBar.vue'
 import DPISettingsPanel from '@/components/dashboard/DPISettingsPanel.vue'
 import ActionButtons from '@/components/dashboard/ActionButtons.vue'
@@ -144,17 +116,16 @@ import BackButton from '@/components/dashboard/BackButton.vue'
 import KreoLogo from '@/components/dashboard/KreoLogo.vue'
 import StatusBar from '@/components/dashboard/StatusBar.vue'
 import SensorSettingsPanel from '@/components/dashboard/SensorSettingsPanel.vue'
-import SensorMouseDisplay from '@/components/dashboard/SensorMouseDisplay.vue'
 import RGBSettingsPanel from '@/components/dashboard/RGBSettingsPanel.vue'
 import KeyRemappingPanel from '@/components/dashboard/KeyRemappingPanel.vue'
+import SensorMouseDisplay from '@/components/dashboard/SensorMouseDisplay.vue'
 import KeyRemappingMouseDisplay from '@/components/dashboard/KeyRemappingMouseDisplay.vue'
 
 export default {
   name: 'DashboardView',
   components: {
     NavigationTabs,
-    MouseVisualization,
-    AnimatedMouseVisualization,
+    UnifiedMouseDisplay, // Use unified component
     DPIControlBar,
     DPISettingsPanel,
     ActionButtons,
@@ -162,10 +133,10 @@ export default {
     KreoLogo,
     StatusBar,
     SensorSettingsPanel,
-    SensorMouseDisplay,
     KeyRemappingPanel,
-    KeyRemappingMouseDisplay,
-    RGBSettingsPanel
+    RGBSettingsPanel,
+    SensorMouseDisplay,
+    KeyRemappingMouseDisplay
   },
   data() {
     return {
@@ -231,11 +202,6 @@ export default {
   },
   
   async mounted() {
-    // Redirect to initialize if not connected and not already on the initialize page
-    if (!this.isConnected && this.$route.path !== '/initialize') {
-      this.$router.push('/initialize');
-    }
-
     // Initialize sensor settings from Vuex store
     this.$store.dispatch('settings/loadSettingsFromLocalStorage');
     
@@ -614,31 +580,24 @@ export default {
   z-index: 1; /* Sits below the header and footer */
 }
 
-.mouse-section {
-  position: absolute;
-  top: 45%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 1;
-  /* Sizing is now handled by the child component */
-}
-
-.animated-mouse-section {
-  position: fixed;        /* Fixed to viewport so zoom doesn't shift it */
-  top: 85%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 3;
-  /* Sizing is now handled by the child component */
-}
+/* Remove old mouse-section and animated-mouse-section styles */
+/* The new unified component handles its own positioning and animation */
 
 .dpi-control-section {
-  position: fixed;        /* Fixed to viewport so zoom doesn't shift it */
-  top: 20vh;              /* Distance from the top of the screen */
-  left: calc(55% + 30vw); /* Shift it to the right of the centre */
-  transform: translateX(-50%); /* Offset half of its own width */
+  position: absolute;
+  top: 20vh;
+  left: calc(35% + 30vw);
+  transform: translateX(-50%);
+  width: 40%;
   z-index: 15;
+  transition: opacity 0.5s ease;
+  opacity: 0;
   pointer-events: none;
+}
+
+.dashboard-container[data-active-tab="dpi"] .dpi-control-section {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .content-overlay {

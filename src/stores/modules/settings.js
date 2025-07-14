@@ -27,7 +27,8 @@ const state = {
     sleepTimer: 6,          // Sleep timer (maps to performance)
     isWired: false,         // Device connection type
     corderMode: false       // Corded mode active
-  }
+  },
+  debounceTime: 8 // Default debounce time
 }
 
 const getters = {
@@ -53,7 +54,8 @@ const getters = {
   sensorPollingRate: state => state.sensorSettings.pollingRate,
   sensorSleepTimer: state => state.sensorSettings.sleepTimer,
   isWiredDevice: state => state.sensorSettings.isWired,
-  isCorderMode: state => state.sensorSettings.corderMode
+  isCorderMode: state => state.sensorSettings.corderMode,
+  debounceTime: state => state.debounceTime
 }
 
 const mutations = {
@@ -80,6 +82,9 @@ const mutations = {
   },
   SET_RGB_SETTINGS(state, settings) {
     state.rgbSettings = settings
+  },
+  SET_DEBOUNCE_TIME(state, time) {
+    state.debounceTime = time
   },
   
   // Sensor settings mutations
@@ -148,6 +153,7 @@ const mutations = {
       isWired: false,
       corderMode: false
     }
+    state.debounceTime = 8
   }
 }
 
@@ -255,6 +261,15 @@ const actions = {
     }
   },
 
+  setDebounceTime({ commit, dispatch, state }, time) {
+    commit('SET_DEBOUNCE_TIME', time)
+
+    if (state.autoSave) {
+      // Persist to localStorage or cloud
+      dispatch('saveSettingsToLocalStorage') 
+    }
+  },
+
   setSensorAngle({ commit, dispatch, state }, enabled) {
     commit('SET_SENSOR_ANGLE', enabled)
     
@@ -328,6 +343,10 @@ const actions = {
     }
 
     commit('UPDATE_SENSOR_SETTINGS', sensorSettings)
+
+    if (deviceInfo.mouseCfg && deviceInfo.mouseCfg.debounceTime !== undefined) {
+      commit('SET_DEBOUNCE_TIME', deviceInfo.mouseCfg.debounceTime)
+    }
   },
 
   // Load settings from localStorage
@@ -386,6 +405,12 @@ const actions = {
         commit('SET_KEY_MAPPINGS', parsedMappings)
       }
 
+      // Load debounce time
+      const debounceTime = localStorage.getItem('kreo_debounce_time')
+      if (debounceTime !== null) {
+        commit('SET_DEBOUNCE_TIME', parseInt(debounceTime, 10))
+      }
+
     } catch (error) {
       console.error('Error loading settings from localStorage:', error)
     }
@@ -402,6 +427,7 @@ const actions = {
       localStorage.setItem('kreo_language', state.language)
       localStorage.setItem('kreo_notifications', state.notifications.toString())
       localStorage.setItem('kreo_auto_save', state.autoSave.toString())
+      localStorage.setItem('kreo_debounce_time', state.debounceTime.toString())
     } catch (error) {
       console.error('Error saving settings to localStorage:', error)
     }
@@ -418,6 +444,7 @@ const actions = {
         rgbSettings: state.rgbSettings,
         sensorSettings: state.sensorSettings,
         pollingRate: state.pollingRate,
+        debounceTime: state.debounceTime,
         updatedAt: new Date().toISOString()
       };
 

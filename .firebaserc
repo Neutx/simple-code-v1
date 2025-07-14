@@ -10,6 +10,9 @@
         ],
         "hub": [
           "hub-kreo"
+        ],
+        "kreo-kontrol": [
+          "kreo-kontrol"
         ]
       }
     }

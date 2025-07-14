@@ -606,4 +606,25 @@ export default {
     max-height: 52px;
   }
 }
+</style>
+
+<style lang="scss">
+.el-message {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 12px 20px !important;
+  background: rgba(39, 39, 42, 0.6) !important;
+  backdrop-filter: blur(16px) !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  
+  .el-message__content {
+    color: #ffffff !important;
+  }
+  
+  .el-message__icon, .el-icon-info, .el-icon-success {
+    color: #ffffff !important;
+  }
+}
 </style> 

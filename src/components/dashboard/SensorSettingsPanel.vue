@@ -235,7 +235,8 @@ export default {
 
     // Current polling rate index from Vuex
     pollingIndex() {
-      return this.pollingRates.indexOf(this.sensorPollingRate) || 2
+      const index = this.pollingRates.indexOf(this.sensorPollingRate)
+      return index !== -1 ? index : 2
     },
 
     activePollingRate() {
