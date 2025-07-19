@@ -315,11 +315,15 @@ export default {
     // Listen for device state updates and sync them to the store
     this.$bus.$on("updateMouseUI", this.handleDeviceUpdate);
 
+    // Listen for mouse display selection events
+    this.$bus.$on('mouse-display-selection', this.handleMouseDisplaySelection);
+
     document.addEventListener('click', this.closeOnClickOutside);
   },
   beforeDestroy() {
     // Clean up event listener
     this.$bus.$off("updateMouseUI", this.handleDeviceUpdate);
+    this.$bus.$off('mouse-display-selection', this.handleMouseDisplaySelection);
     document.removeEventListener('click', this.closeOnClickOutside);
   },
   watch: {
@@ -490,6 +494,9 @@ export default {
         // Reset selected function when changing keys
         this.selectedFunction = null;
         this.$emit('panel-state-changed', { isExpanded: true, selectedKey: this.selectedKey });
+        
+        // Emit selection to mouse display for synchronization
+        this.$bus.$emit('key-panel-selection', key);
       }
     },
     deselectKey() {
@@ -511,6 +518,7 @@ export default {
 
       mapping.value = option.value
       mapping.label = option.label
+      mapping.name = `${this.getDefaultButtonName(this.getButtonIndex(key))} (${option.label})`;
       this.selectedFunction = option.value
       this.selectedMacroId = null
 
@@ -521,6 +529,12 @@ export default {
         label: option.label,
         macroId: null
       })
+
+      // Emit button name update for mouse display
+      this.$emit('button-name-updated', {
+        key: mapping.key,
+        name: mapping.name
+      });
     },
     promptForMacroName() {
       this.isNamingMacro = true;
@@ -664,6 +678,7 @@ export default {
       if (mapping) {
         mapping.value = 'macro'
         mapping.label = `Macro: ${macro.name}`
+        mapping.name = `${this.getDefaultButtonName(this.getButtonIndex(this.selectedKey))} (${macro.name})`;
 
         // Emit update event with macro information
         this.$emit('key-mapping-update', {
@@ -673,9 +688,31 @@ export default {
           macroId: macro.id,
           macroData: macro
         })
+
+        // Emit button name update for mouse display
+        this.$emit('button-name-updated', {
+          key: mapping.key,
+          name: mapping.name
+        });
       }
 
       console.log('Macro selected for key:', this.selectedKey, macro.name)
+    },
+
+    getButtonIndex(key) {
+      const keyMapping = {
+        'left-click': 0,
+        'right-click': 1,
+        'middle-click': 2,
+        'mouse-button-4': 3,
+        'mouse-button-5': 4
+      };
+      return keyMapping[key] || 0;
+    },
+
+    handleMouseDisplaySelection(key) {
+      // Handle selection from mouse display
+      this.selectKey(key);
     },
 
     formatMacroDate(timestamp) {

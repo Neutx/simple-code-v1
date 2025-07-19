@@ -125,7 +125,7 @@ export default ({
 
         this.contexts.push(context);
 
-        this.$nextTick(function() { //此处必须使用nextTick函数,使页面渲染完后再执行
+        this.$nextTick(function() { 
           this.$refs.keyTable.bodyWrapper.scrollTop = 
           this.$refs.keyTable.bodyWrapper.scrollHeight;
         });

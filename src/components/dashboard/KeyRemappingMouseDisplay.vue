@@ -7,22 +7,22 @@
       <!-- Left side labels and lines -->
       <div class="label-group left-labels">
         <!-- Left Click -->
-        <div class="label-item" :class="{ active: selectedKey === 'left-click' }" @click="selectKey('left-click')">
-          <span class="label-text">Left click</span>
+        <div class="label-item" :class="{ active: localSelectedKey === 'left-click' }" @click="selectKey('left-click')">
+          <span class="label-text">{{ buttonNames['left-click'] }}</span>
           <div class="label-line"></div>
           <div class="label-dot"></div>
         </div>
         
         <!-- Mouse Button 4 -->
-        <div class="label-item" :class="{ active: selectedKey === 'mouse-button-4' }" @click="selectKey('mouse-button-4')">
-          <span class="label-text">Mouse button 4</span>
+        <div class="label-item" :class="{ active: localSelectedKey === 'mouse-button-4' }" @click="selectKey('mouse-button-4')">
+          <span class="label-text">{{ buttonNames['mouse-button-4'] }}</span>
           <div class="label-line"></div>
           <div class="label-dot"></div>
         </div>
         
         <!-- Mouse Button 5 -->
-        <div class="label-item" :class="{ active: selectedKey === 'mouse-button-5' }" @click="selectKey('mouse-button-5')">
-          <span class="label-text">Mouse button 5</span>
+        <div class="label-item" :class="{ active: localSelectedKey === 'mouse-button-5' }" @click="selectKey('mouse-button-5')">
+          <span class="label-text">{{ buttonNames['mouse-button-5'] }}</span>
           <div class="label-line"></div>
           <div class="label-dot"></div>
         </div>
@@ -41,17 +41,17 @@
       <!-- Right side labels and lines -->
       <div class="label-group right-labels">
         <!-- Middle Click -->
-        <div class="label-item" :class="{ active: selectedKey === 'middle-click' }" @click="selectKey('middle-click')">
+        <div class="label-item" :class="{ active: localSelectedKey === 'middle-click' }" @click="selectKey('middle-click')">
           <div class="label-dot"></div>
           <div class="label-line"></div>
-          <span class="label-text">Middle click</span>
+          <span class="label-text">{{ buttonNames['middle-click'] }}</span>
         </div>
         
         <!-- Right Click -->
-        <div class="label-item" :class="{ active: selectedKey === 'right-click' }" @click="selectKey('right-click')">
+        <div class="label-item" :class="{ active: localSelectedKey === 'right-click' }" @click="selectKey('right-click')">
           <div class="label-dot"></div>
           <div class="label-line"></div>
-          <span class="label-text">Right click</span>
+          <span class="label-text">{{ buttonNames['right-click'] }}</span>
         </div>
       </div>
     </div>
@@ -99,23 +99,49 @@ export default {
     mouseImageSrc: {
       type: String,
       default: '/mice/ikarus.svg'
+    },
+    buttonNames: {
+      type: Object,
+      default: () => ({
+        'left-click': 'Left click',
+        'right-click': 'Right click',
+        'middle-click': 'Middle click',
+        'mouse-button-4': 'Mouse button 4 (Back)',
+        'mouse-button-5': 'Mouse button 5 (Forward)'
+      })
+    },
+    selectedKey: {
+      type: String,
+      default: null
     }
   },
   data() {
     return {
-      selectedKey: 'left-click',
       profilesExpanded: false,
       activeProfile: 1,
       profileCount: 4
     }
+  },
+  mounted() {
+    // Listen for panel selection events
+    this.$bus.$on('key-panel-selection', this.handlePanelSelection);
+  },
+  beforeDestroy() {
+    // Clean up event listeners
+    this.$bus.$off('key-panel-selection', this.handlePanelSelection);
   },
   methods: {
     handleImageError(event) {
       event.target.src = '/mice/ikarus.svg'
     },
     selectKey(key) {
-      this.selectedKey = key
-      this.$emit('key-selected', key)
+      this.$emit('key-selected', key);
+      // Emit to event bus for panel synchronization
+      this.$bus.$emit('mouse-display-selection', key);
+    },
+    handlePanelSelection(key) {
+      // Update local selection when panel changes
+      this.$emit('update:selectedKey', key);
     },
     toggleProfiles() {
       this.profilesExpanded = !this.profilesExpanded
@@ -124,6 +150,17 @@ export default {
       this.activeProfile = index
       this.$emit('profile-selected', index)
       this.profilesExpanded = false // Collapse after selection
+    }
+  },
+  computed: {
+    localSelectedKey: {
+      get() {
+        return this.selectedKey;
+      },
+      set(value) {
+        // This allows us to handle internal updates
+        this.$emit('update:selectedKey', value);
+      }
     }
   }
 }

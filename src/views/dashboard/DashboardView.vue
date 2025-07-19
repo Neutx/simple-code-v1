@@ -75,13 +75,19 @@
         <KeyRemappingMouseDisplay 
           :device-model="deviceModel" 
           :mouse-image-src="mouseImageSrc"
-          :highlighted-key="highlightedKey"
+          :selected-key.sync="selectedKey"
+          :button-names="buttonNames"
           @key-selected="handleKeySelected"
         />
       </div>
       
       <!-- Key Remapping Panel (only visible in keys mode) -->
-      <KeyRemappingPanel v-if="activeTab === 'keys'" @key-mapping-update="handleKeyMappingUpdate" @panel-state-changed="handlePanelStateChange" />
+      <KeyRemappingPanel 
+        v-if="activeTab === 'keys'" 
+        @key-mapping-update="handleKeyMappingUpdate" 
+        @panel-state-changed="handlePanelStateChange"
+        @button-name-updated="handleButtonNameUpdate"
+      />
       <RGBSettingsPanel v-if="activeTab === 'rgb'" />
       
       <!-- Router View for Tab Content -->
@@ -145,7 +151,15 @@ export default {
       deviceInfo: HIDHandle.deviceInfo, // Reactive reference to HIDHandle
       realTimeTimer: null,
       isKeyRemappingPanelExpanded: false,
-      highlightedKey: null
+      highlightedKey: null,
+      selectedKey: null,
+      buttonNames: {
+        'left-click': 'Left click',
+        'right-click': 'Right click',
+        'middle-click': 'Middle click',
+        'mouse-button-4': 'Mouse button 4 (Back)',
+        'mouse-button-5': 'Mouse button 5 (Forward)'
+      }
     }
   },
   computed: {
@@ -298,8 +312,15 @@ export default {
       this.$message.info('Profile feature coming soon!')
     },
     
-    handleKeySelected() {
-      // Handle key selection logic here
+    handleKeySelected(key) {
+      // Handle key selection from mouse display
+      this.selectedKey = key;
+    },
+    
+    handleButtonNameUpdate({ key, name }) {
+      // Update button names when they are changed in the panel
+      this.buttonNames[key] = name;
+      this.$forceUpdate(); // Force re-render to update the mouse display
     },
     
     handleKeyMappingUpdate(mapping) {
@@ -494,6 +515,7 @@ export default {
     handlePanelStateChange({ isExpanded, selectedKey }) {
       this.isKeyRemappingPanelExpanded = isExpanded;
       this.highlightedKey = selectedKey;
+      this.selectedKey = selectedKey;
     },
     
     getDeviceNameFromCidMid(cid, mid) {

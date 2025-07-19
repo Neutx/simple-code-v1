@@ -30,7 +30,7 @@
 
       <!-- Subtitle -->
       <div class="subtitle-section">
-        <p class="subtitle">Your personal command center</p>
+        <p class="initialize-subtitle">Please connect your Kreo mouse to begin</p>
       </div>
       
       <!-- Action buttons -->
@@ -69,6 +69,7 @@
         </div>
       </div>
     </div>
+    <BetaLogo />
   </div>
 </template>
 
@@ -76,9 +77,13 @@
 import { mapGetters } from 'vuex'
 import { createInitializeComposable } from '@/scripts/device/initialize'
 import HIDHandle from '@/assets/js/HIDHandle'
+import BetaLogo from '@/components/BetaLogo.vue';
 
 export default {
   name: 'InitializeView',
+  components: {
+    BetaLogo
+  },
   data() {
     return {
       initializeLogic: null,

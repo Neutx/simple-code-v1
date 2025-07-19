@@ -41,7 +41,7 @@
       <!-- Recording UI -->
       <div class="recording-ui" v-if="showRecordingUI">
         <h4 v-if="selectedMacroLabel" class="selected-macro-label">{{ selectedMacroLabel }}</h4>
-        <div class="recorded-actions-list" v-if="recordedActions.length > 0">
+        <div class="recorded-actions-list" ref="actionsList" v-if="recordedActions.length > 0">
             <div v-for="(action, index) in recordedActions" :key="index" class="action-item">
                 {{ action.key }}{{ action.type === '↓' ? '↓' : '↑' }}{{ action.delay }}ms
             </div>
@@ -196,12 +196,21 @@ export default {
           };
           
           this.recordedActions.push(action);
+          this.scrollToBottom();
           
           console.log('Recorded key:', action);
         }
       } catch (error) {
         console.error('Error recording key:', error);
       }
+    },
+    scrollToBottom() {
+      this.$nextTick(() => {
+        const list = this.$refs.actionsList;
+        if (list) {
+          list.scrollTop = list.scrollHeight;
+        }
+      });
     },
     saveMacro() {
       // Convert recorded actions to the format expected by the legacy system

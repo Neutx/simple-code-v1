@@ -101,7 +101,7 @@
           <div class="polling-rate-selector">
             <div class="rate-labels">
               <span
-                v-for="(rate, i) in pollingRates"
+                v-for="(rate, i) in dynamicPollingRates"
                 :key="rate"
                 :class="['rate-label', { active: activePollingRate === rate, disabled: !isDeviceConnected }]"
                 @click="handlePollingRateClick(i)"
@@ -113,9 +113,9 @@
               <input
                 type="range"
                 min="0"
-                :max="pollingRates.length - 1"
+                :max="dynamicPollingRates.length - 1"
                 v-model="pollingIndex"
-                @input="handlePollingRateClick(pollingIndex)"
+                @input="handlePollingRateDrag"
                 class="polling-slider"
                 :style="{ '--fill-percent': fillPercent + '%' }"
                 :disabled="!isDeviceConnected"
@@ -239,6 +239,13 @@ export default {
       return index !== -1 ? index : 2
     },
 
+    dynamicPollingRates() {
+      if (this.isWiredDevice) {
+        return this.pollingRates.filter(rate => rate <= 1000);
+      }
+      return this.pollingRates;
+    },
+
     activePollingRate() {
       return this.sensorPollingRate
     },
@@ -342,11 +349,20 @@ export default {
     
     sensorPollingRate(newRate, oldRate) {
       if (!this.isUpdatingFromVuex && this.isDeviceConnected && oldRate !== undefined) {
-        this.syncPollingRateToDevice(newRate)
+        this.syncPollingRateToDevice(newRate);
+
+        // Automatically update sensor mode based on polling rate
+        if (newRate >= 2000 && this.sensorMode !== 256) {
+          this.setSensorMode(256); // Set to Corded
+        } else if (newRate < 2000 && this.sensorMode === 256) {
+          // Revert to a default non-corded mode, e.g., Low Power (0) or the last known one
+          // For simplicity, we'll revert to Low Power.
+          this.setSensorMode(0);
+        }
       }
       // Auto-save to localStorage when settings change
       if (oldRate !== undefined) {
-        this.saveSettingsToLocalStorage()
+        this.saveSettingsToLocalStorage();
       }
     },
     
@@ -706,7 +722,7 @@ export default {
     handlePollingRateClick(index) {
       if (!this.isDeviceConnected) return
       
-      const rate = this.pollingRates[index]
+      const rate = this.dynamicPollingRates[index]
       if (!rate) return
       
       this.setSensorPollingRate(rate)
@@ -715,8 +731,14 @@ export default {
       this.handlePollingRateChange(index)
     },
 
+    handlePollingRateDrag(event) {
+      const newIndex = parseInt(event.target.value, 10);
+      const newRate = this.dynamicPollingRates[newIndex];
+      this.setSensorPollingRate(newRate);
+    },
+
     handlePollingRateChange(newIndex) {
-      const newRate = this.pollingRates[newIndex]
+      const newRate = this.dynamicPollingRates[newIndex]
       
       if (newRate >= 2000) {
         // Auto-switch to Corded mode for high polling rates
