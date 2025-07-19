@@ -171,6 +171,7 @@ export default {
   width: 24px;
   height: 24px;
   flex-shrink: 0;
+  color: white; /* Ensure Iconify icons are white */
   
   // Style for Iconify icons
   svg {
@@ -185,12 +186,6 @@ export default {
     width: 100%;
     height: 100%;
     filter: brightness(0) invert(1); // Make SVG white
-  }
-  
-  // Legacy Element UI icon styles (for backward compatibility)
-  i {
-    font-size: 16px;
-    color: white;
   }
 }
 

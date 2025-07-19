@@ -8,6 +8,7 @@
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
+    "@lottiefiles/lottie-player": "^2.0.12",
     "@sentry/vue": "^9.38.0",
     "@vue/composition-api": "^1.7.2",
     "@vueuse/core": "^9.13.0",

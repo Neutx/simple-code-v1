@@ -120,6 +120,7 @@
         <span class="copyright">© 2025 Kreo</span>
       </div>
     </div>
+    <BetaLogo />
   </div>
 </template>
 
@@ -128,11 +129,13 @@ import { mapGetters } from 'vuex'
 import { createLoginComposable } from '@/scripts/auth/login'
 import Lottie from 'vue-lottie/src/lottie.vue'
 import animationData from '@/../public/img/home-bg.json'
+import BetaLogo from '@/components/BetaLogo.vue';
 
 export default {
   name: 'LoginView',
   components: {
-    Lottie
+    Lottie,
+    BetaLogo
   },
   data() {
     return {

@@ -14,7 +14,7 @@
     <!-- Profiles list -->
     <div class="profiles-wrapper" :class="{ expanded: profilesExpanded }">
       <!-- Active profile (always visible) -->
-      <div
+      <!-- <div
         class="profile-item active"
         @click="toggleProfiles"
       >
@@ -22,7 +22,7 @@
         <div class="expand-icon" :class="{ rotated: profilesExpanded }">
           <IconifyIcon icon="mdi:chevron-down" />
         </div>
-      </div>
+      </div> -->
 
       <!-- Other profiles (shown when expanded) -->
       <transition name="profiles-expand">
@@ -44,24 +44,18 @@
     <div class="sensor-status-bar">
       <div class="inline-flex justify-start items-center gap-20">
         <div class="flex justify-start items-end gap-2.5">
-          <div class="status-icon">
-            <IconifyIcon icon="solar:mouse-outline" />
-          </div>
-          <div class="w-28 h-6 justify-center">
-            <span class="text-white/50 text-lg font-semibold font-['DM_Sans']">Model:</span>
-            <span class="text-white text-lg font-semibold font-['DM_Sans']"> {{ deviceModel }}</span>
-          </div>
+          
         </div>
         <div class="flex justify-start items-start gap-2.5">
           <div class="status-icon">
-            <img src="/icons/DPI.svg" alt="DPI" />
-          </div>
-          <div class="w-16 h-6 justify-center">
-            <span class="text-white/50 text-lg font-semibold font-['DM_Sans']">DPI:</span>
-            <span class="text-white text-lg font-semibold font-['DM_Sans']"> {{ displayCurrentDPI }}</span>
-          </div>
+        <img src="/icons/DPI.svg" alt="DPI" />
+      </div>
+      <div class="status-text">
+        <span class="text-white/50 text-lg font-semibold font-['DM_Sans']">DPI: </span>
+        <span class="text-white text-lg font-semibold font-['DM_Sans']">{{ currentDPI }}</span>
+      </div>
         </div>
-        <div class="flex justify-start items-end gap-2.5">
+        <div class="flex justify-start items-end ">
           <div class="status-icon">
             <IconifyIcon icon="material-symbols:speed-outline-rounded" />
           </div>
@@ -70,7 +64,7 @@
             <span class="text-white text-lg font-semibold font-['DM_Sans']"> {{ displayPollingRate }}Hz</span>
           </div>
         </div>
-        <div class="flex justify-start items-end gap-2.5">
+        <div class="flex justify-start items-end ">
           <div class="status-icon">
             <IconifyIcon icon="mdi:battery-outline" />
           </div>
@@ -247,7 +241,7 @@ export default {
   width: 256px;
   height: 384px;
   left: 356px;
-  top: 50px;
+  top: 10vh;
   object-fit: contain;
   z-index: 2;
 }
