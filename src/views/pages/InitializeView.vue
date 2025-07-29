@@ -42,13 +42,6 @@
         >
           {{ initializeLogic.connecting() ? 'Connecting...' : 'Connect' }}
         </button>
-        <button 
-          class="action-button"
-          @click="initializeLogic.handlePair"
-          :disabled="initializeLogic.pairing()"
-        >
-          {{ initializeLogic.pairing() ? 'Pairing...' : 'Pair' }}
-        </button>
       </div>
       
       <!-- Browser support info -->

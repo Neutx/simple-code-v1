@@ -4,6 +4,7 @@ import store from '@/stores'
 import HIDHandle from '@/assets/js/HIDHandle' // Import HIDHandle
 import LoginView from '@/views/auth/LoginView.vue'
 import RegisterView from '@/views/auth/RegisterView.vue'
+import ForgotPasswordView from '@/views/auth/ForgotPasswordView.vue'
 import InitializeView from '@/views/pages/InitializeView.vue'
 import DashboardView from '@/views/dashboard/DashboardView.vue'
 import HomeView from '@/views/dashboard/HomeView.vue'
@@ -21,13 +22,21 @@ const routes = [
   },
   {
     path: '/login',
-    name: 'Login',
-    component: LoginView
+    name: 'login',
+    component: LoginView,
+    meta: { requiresGuest: true }
   },
   {
     path: '/register',
-    name: 'Register',
-    component: RegisterView
+    name: 'register',
+    component: RegisterView,
+    meta: { requiresGuest: true }
+  },
+  {
+    path: '/forgot-password',
+    name: 'forgot-password',
+    component: ForgotPasswordView,
+    meta: { requiresGuest: true }
   },
   {
     path: '/initialize',
@@ -100,19 +109,19 @@ router.beforeEach((to, from, next) => {
           const isAuth = store.getters['auth/isAuthenticated']
           
           // Allow navigation to login/register if not authenticated
-          if (!isAuth && (to.path === '/login' || to.path === '/register')) {
+          if (!isAuth && (to.path === '/login' || to.path === '/register' || to.path === '/forgot-password')) {
             next()
             return
           }
           
           // Redirect to login if not authenticated and trying to access protected routes
-          if (!isAuth && to.path !== '/login' && to.path !== '/register') {
+          if (!isAuth && to.path !== '/login' && to.path !== '/register' && to.path !== '/forgot-password') {
             next('/login')
             return
           }
           
           // If authenticated and trying to go to login/register, redirect to dashboard
-          if (isAuth && (to.path === '/login' || to.path === '/register')) {
+          if (isAuth && (to.path === '/login' || to.path === '/register' || to.path === '/forgot-password')) {
             next('/dashboard')
             return
           }
@@ -126,19 +135,19 @@ router.beforeEach((to, from, next) => {
   }
   
   // Allow navigation to login/register if not authenticated
-  if (!isAuthenticated && (to.path === '/login' || to.path === '/register')) {
+  if (!isAuthenticated && (to.path === '/login' || to.path === '/register' || to.path === '/forgot-password')) {
     next()
     return
   }
   
   // Redirect to login if not authenticated and trying to access protected routes
-  if (!isAuthenticated && to.path !== '/login' && to.path !== '/register') {
+  if (!isAuthenticated && to.path !== '/login' && to.path !== '/register' && to.path !== '/forgot-password') {
     next('/login')
     return
   }
   
   // If authenticated and trying to go to login/register, redirect to dashboard
-  if (isAuthenticated && (to.path === '/login' || to.path === '/register')) {
+  if (isAuthenticated && (to.path === '/login' || to.path === '/register' || to.path === '/forgot-password')) {
     next('/dashboard')
     return
   }

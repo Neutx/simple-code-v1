@@ -56,22 +56,21 @@
       </div>
         </div>
         <div class="flex justify-start items-end ">
-          <div class="status-icon">
-            <IconifyIcon icon="material-symbols:speed-outline-rounded" />
-          </div>
           <div class="w-44 h-6 justify-center">
             <span class="text-white/50 text-lg font-semibold font-['DM_Sans']">Polling rate:</span>
             <span class="text-white text-lg font-semibold font-['DM_Sans']"> {{ displayPollingRate }}Hz</span>
           </div>
         </div>
-        <div class="flex justify-start items-end ">
+        <div class="flex justify-start items-end gap-2.5">
           <div class="status-icon">
-            <IconifyIcon icon="mdi:battery-outline" />
+            <IconifyIcon v-if="isCharging" icon="mdi:battery-charging" />
+            <IconifyIcon v-else icon="mdi:battery-outline" />
           </div>
-          <div class="w-28 h-6 justify-center">
-            <span class="text-white/50 text-lg font-semibold font-['DM_Sans']">Battery:</span>
-            <span class="text-white text-lg font-semibold font-['DM_Sans']"> {{ displayBatteryLevel }}%</span>
-          </div>
+          <div class="status-text">
+        <span class="text-white/50 text-lg font-semibold font-['DM_Sans']">Battery: </span>
+        <span class="text-white text-lg font-semibold font-['DM_Sans']">{{ batteryLevel }}%</span>
+        <span v-if="isCharging" class="charging-text">Charging</span>
+      </div>
         </div>
       </div>
     </div>
@@ -109,6 +108,10 @@ export default {
     batteryLevel: {
       type: [String, Number],
       default: '69'
+    },
+    isCharging: {
+      type: Boolean,
+      default: false
     }
   },
   data() {
@@ -351,6 +354,13 @@ export default {
   z-index: 3;
   pointer-events: auto;
   white-space: nowrap;
+  
+  .charging-text {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 500;
+    margin-left: 0.5rem;
+  }
 }
 
 .status-icon {

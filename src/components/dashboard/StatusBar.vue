@@ -32,11 +32,13 @@
 
     <div class="status-item">
       <div class="status-icon">
-        <IconifyIcon icon="mdi:battery-outline" />
+        <IconifyIcon v-if="isCharging" icon="mdi:battery-charging" />
+        <IconifyIcon v-else icon="mdi:battery-outline" />
       </div>
       <div class="status-text">
         <span class="status-label">Battery: </span>
         <span class="status-value">{{ batteryLevel }}%</span>
+        <span v-if="isCharging" class="charging-text">Charging</span>
       </div>
     </div>
 
@@ -89,6 +91,10 @@ export default {
     motionSync: {
       type: Boolean,
       default: true
+    },
+    isCharging: {
+      type: Boolean,
+      default: false
     }
   }
 }
@@ -198,6 +204,13 @@ export default {
     border: none;
     box-shadow: none;
     outline: none;
+  }
+  
+  .charging-text {
+    font-size: clamp(10px, 0.8vw, 12px);
+    color: rgba(255, 255, 255, 0.7);
+    margin-left: 0.5vw;
+    font-weight: 500;
   }
 }
 

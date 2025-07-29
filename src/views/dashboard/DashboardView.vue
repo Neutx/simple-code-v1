@@ -64,6 +64,7 @@
           :currentDPI="currentDPI"
           :pollingRate="pollingRate"
           :batteryLevel="batteryLevel"
+          :is-charging="isCharging"
         />
       </div>
       
@@ -105,6 +106,7 @@
         :battery-level="batteryLevel"
         :lift-off-distance="liftOffDistance"
         :motion-sync="motionSync"
+        :is-charging="isCharging"
       />
     </div>
   </div>
@@ -208,6 +210,11 @@ export default {
       // Use reactive deviceInfo for motion sync
       const sync = this.deviceInfo?.mouseCfg?.sensor?.motionSync;
       return sync || false;
+    },
+    
+    isCharging() {
+      // Use reactive deviceInfo for charging status
+      return this.deviceInfo?.battery?.charging || false;
     },
     
     mouseImageSrc() {
