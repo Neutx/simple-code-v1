@@ -19,6 +19,7 @@
       :currentDPI="currentDPI"
       :pollingRate="pollingRate"
       :batteryLevel="batteryLevel"
+      :is-charging="isCharging"
       @profile-selected="handleProfileSelected"
     />
   </div>
@@ -55,6 +56,9 @@ export default {
     },
     batteryLevel() {
       return this.deviceInfo.battery?.level || '69'
+    },
+    isCharging() {
+      return this.deviceInfo.battery?.charging || false
     },
     isDeviceConnected() {
       return HIDHandle.deviceInfo.deviceOpen

@@ -97,7 +97,7 @@ export const createLoginComposable = (store, router, message) => {
       // Always redirect to initialize page after login
       router.push("/initialize");
     } catch (error) {
-      message.error(error.message || "Login failed");
+      message.error("Invalid Login Credentials");
     }
   };
 
@@ -111,7 +111,7 @@ export const createLoginComposable = (store, router, message) => {
       // Always redirect to initialize page after login
       router.push("/initialize");
     } catch (error) {
-      message.error(error.message || "Google login failed");
+      message.error("Invalid Login Credentials");
     } finally {
       googleLoading = false;
     }

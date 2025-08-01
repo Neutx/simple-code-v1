@@ -3,9 +3,14 @@
     <div class="flex_column_end">
       <div style="display: flex; justify-content: flex-end;margin-right: 20px; margin-top: 20px;">
         <div class="flex_row_center">
-          <span>Battery:</span>
-          <span>{{battery}}%</span>
-          <span v-show="charging" class="margin_left">charging</span>
+          <div v-if="info.isWired" style="text-align: center;">
+            <IconifyIcon icon="material-symbols:charging-station" style="font-size: 24px;"/>
+            <div style="font-size: 12px; margin-top: -5px;">Charging</div>
+          </div>
+          <div v-else>
+            <span>Battery:</span>
+            <span>{{battery}}%</span>
+          </div>
           <el-button @click="handleCloseClick" class="margin_left">
             <IconifyIcon icon="material-symbols:close" />
           </el-button>
@@ -113,6 +118,15 @@ export default {
         this.battery = this.info.battery.level;
         this.charging = this.info.battery.charging;
       },
+      deep: true
+    },
+    // Watch for changes in the wired connection state
+    "info.isWired": {
+      handler(newVal) {
+        // This watcher ensures that the component reacts to changes in the isWired property.
+        // The template will automatically re-render when this value changes.
+      },
+      immediate: true, // This ensures the handler runs immediately on component load
       deep: true
     },
     //当前DPI发生变化

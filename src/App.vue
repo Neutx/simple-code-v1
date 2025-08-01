@@ -5,17 +5,20 @@
       <p>Initializing...</p>
     </div>
     <router-view v-else />
+    <BetaLogo />
   </div>
 </template>
 
 <script>
 import { mapActions, mapGetters } from 'vuex'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import BetaLogo from '@/components/BetaLogo.vue'
 
 export default {
   name: 'App',
   components: {
-    LoadingSpinner
+    LoadingSpinner,
+    BetaLogo
   },
   computed: {
     ...mapGetters('auth', {
