@@ -1,17 +1,9 @@
 <template>
   <div class="login-container">
-    <!-- Background with Lottie animation -->
-    <div class="background-lottie">
-      <lottie 
-        :options="lottieOptions" 
-        :height="windowHeight" 
-        :width="windowWidth"
-        @animCreated="handleAnimation"
-      />
-    </div>
-    
-    <!-- Main content -->
-    <div class="login-content">
+          <!-- 16:9 Aspect Ratio Container -->
+      <div class="aspect-ratio-container">
+        <!-- Main content -->
+        <div class="login-content">
       <!-- Kreo Logo - 143x44px with 70px top margin -->
       <div class="logo-container">
         <img src="/logos/kreo-logo.svg" alt="Kreo" class="logo" />
@@ -49,13 +41,28 @@
               <input
                 id="password"
                 v-model="loginLogic.form.password"
-                type="password"
+                :type="showPassword ? 'text' : 'password'"
                 :placeholder="loginLogic.errors.password || ''"
                 :class="{ 'error-input': loginLogic.errors.password }"
                 class="form-input"
                 @blur="loginLogic.handlePasswordValidation"
                 @focus="loginLogic.clearPasswordError"
               />
+              <button
+                type="button"
+                class="password-toggle"
+                @click="togglePasswordVisibility"
+                :title="showPassword ? 'Hide password' : 'Show password'"
+              >
+                <svg v-if="showPassword" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                  <line x1="1" y1="1" x2="23" y2="23"/>
+                </svg>
+                <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
             </div>
           </div>
           
@@ -120,38 +127,31 @@
         <span class="copyright">© 2025 Kreo</span>
       </div>
     </div>
-  </div>
+  </div></div>
 </template>
 
 <script>
 import { mapGetters } from 'vuex'
 import { createLoginComposable } from '@/scripts/auth/login'
-import Lottie from 'vue-lottie/src/lottie.vue'
-import animationData from '@/../public/img/home-bg.json'
-
 
 export default {
   name: 'LoginView',
-  components: {
-    Lottie
-  },
   data() {
     return {
       loginLogic: null,
       windowWidth: window.innerWidth,
       windowHeight: window.innerHeight,
-      lottieOptions: {
-        animationData: animationData,
-        autoplay: true,
-        loop: true,
-        rendererSettings: {
-          preserveAspectRatio: 'xMidYMid slice'
-        }
-      }
+      showPassword: false
     }
   },
   computed: {
-    ...mapGetters('auth', ['loading', 'error'])
+    ...mapGetters('auth', ['loading', 'error']),
+    containerWidth() {
+      return 1920
+    },
+    containerHeight() {
+      return 1080
+    }
   },
   created() {
     // Initialize login logic
@@ -160,17 +160,28 @@ export default {
   },
   mounted() {
     window.addEventListener('resize', this.handleResize)
+    this.updateScale()
   },
   beforeDestroy() {
     window.removeEventListener('resize', this.handleResize)
   },
   methods: {
-    handleAnimation(anim) {
-      this.anim = anim
-    },
     handleResize() {
       this.windowWidth = window.innerWidth
       this.windowHeight = window.innerHeight
+      this.updateScale()
+    },
+    updateScale() {
+      const container = document.querySelector('.aspect-ratio-container')
+      if (container) {
+        const scaleX = this.windowWidth / 1920
+        const scaleY = this.windowHeight / 1080
+        const scale = Math.min(scaleX, scaleY)
+        container.style.setProperty('--scale-factor', scale)
+      }
+    },
+    togglePasswordVisibility() {
+      this.showPassword = !this.showPassword
     }
   }
 }

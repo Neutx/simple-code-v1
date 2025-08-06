@@ -4,6 +4,7 @@ module.exports = defineConfig({
   publicPath: '/',
   transpileDependencies: true,
   lintOnSave: false, //关闭eslint校验
+  productionSourceMap: false, // Disable source maps in production for security
   css: {
     loaderOptions: {
       sass: {

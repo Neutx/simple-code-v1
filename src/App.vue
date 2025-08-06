@@ -5,6 +5,7 @@
       <p>Initializing...</p>
     </div>
     <router-view v-else />
+    <OSDetector />
     <BetaLogo />
   </div>
 </template>
@@ -13,12 +14,14 @@
 import { mapActions, mapGetters } from 'vuex'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import BetaLogo from '@/components/BetaLogo.vue'
+import OSDetector from '@/components/OSDetector.vue'
 
 export default {
   name: 'App',
   components: {
     LoadingSpinner,
-    BetaLogo
+    BetaLogo,
+    OSDetector
   },
   computed: {
     ...mapGetters('auth', {
