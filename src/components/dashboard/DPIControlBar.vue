@@ -4,7 +4,7 @@
       <!-- Top section with min/max labels -->
       <div class="dpi-range-labels">
         <span class="range-label min-label">100</span>
-        <span class="range-label max-label">26000</span>
+        <span class="range-label max-label">{{ maxDpi }}</span>
       </div>
       
       <!-- Main DPI slider track -->
@@ -49,6 +49,7 @@
 
 <script>
 import HIDHandle from '@/assets/js/HIDHandle';
+import { mapGetters } from 'vuex';
 
 export default {
   name: 'DPIControlBar',
@@ -58,6 +59,13 @@ export default {
     }
   },
   computed: {
+    ...mapGetters('device', ['deviceModel']),
+    isAnzuDevice() {
+      return this.deviceModel && this.deviceModel.toLowerCase().includes('anzu');
+    },
+    maxDpi() {
+      return this.isAnzuDevice ? 12000 : 26000;
+    },
     dpiProfiles() {
       return this.deviceInfo?.mouseCfg?.dpis || [];
     },
@@ -119,7 +127,7 @@ export default {
   methods: {
     calculatePercent(dpi) {
       const minDpi = 100;
-      const maxDpi = 26000;
+      const maxDpi = this.maxDpi;
       const range = maxDpi - minDpi;
       return ((dpi - minDpi) / range) * 100;
     },
@@ -127,7 +135,7 @@ export default {
       return `${this.calculatePercent(dpi)}%`;
     },
     async setActiveDPI(index) {
-      if (index >= 0 && index < this.maxDpiProfiles) {
+      if (index >= 0 && index < this.maxDpi) {
         try {
           // Use the same method as DPISettingsPanel for consistency
           await HIDHandle.Set_MS_CurrentDPI(index);
@@ -153,7 +161,7 @@ export default {
       const percent = (clickX / rect.width) * 100;
       
       const minDpi = 100;
-      const maxDpi = 26000;
+      const maxDpi = this.maxDpi;
       const range = maxDpi - minDpi;
       const clickedDpi = Math.round((percent / 100) * range + minDpi);
 

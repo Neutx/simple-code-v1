@@ -140,7 +140,7 @@ export default {
   background: #27272a;
   width: 199px;
   height: 56px;
-  justify-content: flex-start;
+  justify-content: center;
   
   &.centered {
     justify-content: center;

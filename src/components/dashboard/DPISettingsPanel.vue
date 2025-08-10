@@ -11,7 +11,7 @@
       </div>
 
       <!-- DPI Light Section -->
-      <div class="setting-row">
+      <div class="setting-row" v-if="!isWired">
         <label class="setting-label">DPI Light</label>
           <div class="dropdown-wrapper" ref="dropdownWrapper">
           <div class="dropdown-container" @click="toggleDropdown">
@@ -37,7 +37,7 @@
       </div>
 
       <!-- DPI Light Brightness -->
-        <div class="slider-section" :class="{ disabled: isBrightnessDisabled }">
+        <div class="slider-section" :class="{ disabled: isBrightnessDisabled }" v-if="!isWired">
         <label class="slider-label">DPI light brightness</label>
         <div class="slider-container">
           <div class="slider-track" @click="handleBrightnessTrackClick">
@@ -58,7 +58,7 @@
       </div>
 
       <!-- DPI Light Speed -->
-        <div class="slider-section" :class="{ disabled: isSpeedDisabled }">
+        <div class="slider-section" :class="{ disabled: isSpeedDisabled }" v-if="!isWired">
         <label class="slider-label">DPI light speed</label>
         <div class="slider-container">
           <div class="slider-track" @click="handleSpeedTrackClick">
@@ -121,12 +121,12 @@
               <input 
                 v-if="editingIndex === index"
                 type="number" 
-                :value="profile.dpi"
-                @input="updateDpiValue(index, $event.target.value)"
-                @blur="stopEditing"
-                @keyup.enter="stopEditing"
+                :value="tempDpiValue"
+                @input="tempDpiValue = $event.target.value"
+                @blur="commitDpiChange"
+                @keyup.enter="commitDpiChange"
                 :min="50"
-                :max="26000"
+                :max="maxDpi"
                 class="profile-dpi-input editing"
                 ref="dpiInput"
               />
@@ -186,6 +186,7 @@
 <script>
 import HIDHandle from '@/assets/js/HIDHandle';
 import ColorPicker from './ColorPicker.vue';
+import { mapGetters } from 'vuex';
 
 export default {
   name: 'DPISettingsPanel',
@@ -208,6 +209,7 @@ export default {
       speed: 1,
       maxDpiProfiles: 4,
       editingIndex: -1, // Which DPI is being edited
+      tempDpiValue: null,
       colorPickerVisible: false,
       selectedProfileIndex: 0,
       selectedProfileColor: '#EF4444',
@@ -274,6 +276,16 @@ export default {
     }
   },
    computed: {
+    ...mapGetters('device', ['deviceModel']),
+    isAnzuDevice() {
+      return this.deviceModel && this.deviceModel.toLowerCase().includes('anzu');
+    },
+    maxDpi() {
+      return this.isAnzuDevice ? 12000 : 26000;
+    },
+    isWired() {
+      return this.deviceInfo.isWired;
+    },
     selectedDpiIndex() {
       return this.deviceInfo.mouseCfg?.currentDpi ?? 0;
     },
@@ -356,6 +368,7 @@ export default {
       if (!force && index !== this.selectedDpiIndex) return;
 
       this.editingIndex = index;
+      this.tempDpiValue = this.dpiProfiles[index].dpi;
       this.$nextTick(() => {
         if (this.$refs.dpiInput && this.$refs.dpiInput[0]) {
           this.$refs.dpiInput[0].focus();
@@ -365,6 +378,7 @@ export default {
     },
     stopEditing() {
       this.editingIndex = -1;
+      this.tempDpiValue = null;
     },
     async selectMode(value) {
       this.mode = value;
@@ -390,6 +404,10 @@ export default {
       } catch (error) {
         console.error('Error updating DPI light mode:', error);
       }
+    },
+    async commitDpiChange() {
+      await this.updateDpiValue(this.editingIndex, this.tempDpiValue);
+      this.stopEditing();
     },
     handleBrightnessTrackClick(event) {
       if (this.isBrightnessDisabled) return;
@@ -458,12 +476,12 @@ export default {
     async updateDpiValue(index, value) {
       let dpiValue = parseInt(value, 10);
       
-      if (!isNaN(dpiValue) && dpiValue >= 50 && dpiValue <= 26000) {
+      if (!isNaN(dpiValue) && dpiValue >= 50 && dpiValue <= this.maxDpi) {
         // Round to nearest 50 (like in reference DpiSetting.vue)
         dpiValue = Math.ceil(dpiValue / 50) * 50;
         
         // Clamp to valid range
-        if (dpiValue > 26000) dpiValue = 26000;
+        if (dpiValue > this.maxDpi) dpiValue = this.maxDpi;
         if (dpiValue < 50) dpiValue = 50;
         
         // Update local state
@@ -1040,6 +1058,7 @@ export default {
     /* Firefox */
     &[type=number] {
       -moz-appearance: textfield;
+      appearance: textfield;
     }
   }
   

@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@lottiefiles/lottie-player": "^2.0.12",
-    "@sentry/vue": "^9.38.0",
+    "@sentry/vue": "^9.45.0",
     "@vue/composition-api": "^1.7.2",
     "@vueuse/core": "^9.13.0",
     "core-js": "^3.8.3",
