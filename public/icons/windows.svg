@@ -1,3 +1,24 @@
-<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M3 12.0001V6.88007C3 6.61007 3.17 6.37007 3.43 6.32007L10.5 4.98007C10.8 4.92007 11.1 5.14007 11.1 5.45007V11.1001H3V12.0001ZM3 17.1201C3 17.3901 3.17 17.6301 3.43 17.6801L10.5 19.0201C10.8 19.0801 11.1 18.8601 11.1 18.5501V12.9001H3V17.1201ZM12.9 11.1001V4.90007C12.9 4.59007 13.2 4.37007 13.5 4.43007L21.57 6.32007C21.83 6.37007 22 6.61007 22 6.88007V12.0001H12.9ZM12.9 18.5501C12.9 18.8601 13.2 19.0801 13.5 19.0201L21.57 17.6801C21.83 17.6301 22 17.3901 22 17.1201V12.9001H12.9V18.5501Z" fill="currentColor"/>
+<?xml version="1.0" standalone="no"?>
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:svg="http://www.w3.org/2000/svg" xmlns="http://www.w3.org/2000/svg" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="128" height="128" id="svg2" version="1.1" inkscape:version="0.91 r13725" sodipodi:docname="logo-windows.svg">
+  <metadata id="metadata33">
+    <rdf:RDF>
+      <cc:Work rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+        <dc:title>logo-windows</dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <sodipodi:namedview pagecolor="#ffffff" bordercolor="#666666" borderopacity="1" objecttolerance="10" gridtolerance="10" guidetolerance="10" inkscape:pageopacity="0" inkscape:pageshadow="2" inkscape:window-width="1357" inkscape:window-height="909" id="namedview31" showgrid="true" inkscape:snap-global="true" inkscape:snap-bbox="true" inkscape:bbox-nodes="true" inkscape:zoom="0.69532166" inkscape:cx="118.2627" inkscape:cy="203.54136" inkscape:window-x="272" inkscape:window-y="211" inkscape:window-maximized="0" inkscape:current-layer="svg2" inkscape:object-nodes="true">
+    <inkscape:grid type="xygrid" id="grid4188" spacingx="16" spacingy="16" empspacing="2"/>
+  </sodipodi:namedview>
+  <title id="title4">logo-windows</title>
+  <defs id="defs6">
+    <g id="hg">
+      <path d="M 85.685,67.399 C 100.47,42.815 82.562,2.944 49.818,6.995 20.233,10.652 19.757,41.792 45.83,49.189 c 22.563,6.408 4.661,20.72 5.184,30.25 0.526,9.529 19.616,12.986 34.671,-12.04" id="path9" inkscape:connector-curvature="0"/>
+      <circle cx="31.579" cy="70.616997" r="12.838" id="circle11"/>
+      <circle cx="16.913" cy="43.476002" r="8.3999996" id="circle13"/>
+    </g>
+  </defs>
+  <path style="fill-rule:evenodd;stroke:none;stroke-width:0.92753965px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="M 415.53711 31.957031 L 192 66.408203 L 192 208 L 415.53711 208 L 415.53711 31.957031 z M 160 71.339844 L 0 96 L 0 208 L 160 208 L 160 71.339844 z M 0 240 L 0 384 L 160 408.43555 L 160 240 L 0 240 z M 192 240 L 192 413.32227 L 415.53711 447.46094 L 415.53711 240 L 192 240 z " id="path3339"/>
 </svg>
