@@ -154,6 +154,15 @@ const mutations = {
       corderMode: false
     }
     state.debounceTime = 8
+  },
+  
+  CLEAR_LOCAL_STORAGE() {
+    localStorage.removeItem('kreo_sensor_settings');
+    localStorage.removeItem('kreo_dpi_settings');
+    localStorage.removeItem('kreo_rgb_settings');
+    localStorage.removeItem('kreo_key_mappings');
+    localStorage.removeItem('kreo_debounce_time');
+    console.log('Cleared Kreo device settings from localStorage.');
   }
 }
 
@@ -495,6 +504,10 @@ const actions = {
     
     // Also save to localStorage
     dispatch('saveSettingsToLocalStorage')
+  },
+
+  clearLocalStorage({ commit }) {
+    commit('CLEAR_LOCAL_STORAGE');
   }
 }
 

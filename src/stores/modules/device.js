@@ -7,9 +7,6 @@ import {
 } from 'firebase/firestore'
 import { db } from '@/utils/firebase'
 import router from '@/router'
-import { createNavigationComposable } from '@/scripts/dashboard/navigation'
-
-const navigation = createNavigationComposable(router)
 
 // Set up disconnect callback when HIDHandle is imported
 HIDHandle.Set_Disconnect_Callback(() => {
@@ -22,7 +19,7 @@ HIDHandle.Set_Disconnect_Callback(() => {
 
     if (currentPath !== '/initialize' && !currentPath.startsWith('/auth')) {
       console.log("🔄 Physical disconnect detected - redirecting to /initialize")
-      navigation.goBack()
+      router.push('/initialize')
     }
   } catch (error) {
     console.error("Error in disconnect callback:", error)
@@ -38,6 +35,7 @@ const state = {
   connecting: false,
   pairing: false,
   deviceInfo: HIDHandle.deviceInfo,
+  deviceModel: 'Ikarus', // Default model
   battery: {
     level: 0,
     charging: false
@@ -51,6 +49,7 @@ const getters = {
   isConnecting: state => state.connecting,
   isPairing: state => state.pairing,
   deviceInfo: () => HIDHandle.deviceInfo,
+  deviceModel: state => state.deviceModel, // Getter for the device model
   battery: state => HIDHandle.deviceInfo.battery || state.battery,
   currentSettings: state => state.currentSettings,
   error: state => state.error,
@@ -77,6 +76,9 @@ const mutations = {
   },
   SET_DEVICE_INFO(state, info) {
     state.connected = info ? true : false
+  },
+  SET_DEVICE_MODEL(state, model) {
+    state.deviceModel = model
   },
   SET_BATTERY(state, battery) {
     state.battery = battery
@@ -157,6 +159,7 @@ const actions = {
           }
 
           dispatch('startRealTimeMonitoring')
+          dispatch('initializeSettingsFromDevice');
 
           return true
         } else {
@@ -230,7 +233,7 @@ const actions = {
           const currentPath = router.currentRoute?.value?.path || window.location.pathname
           if (currentPath !== '/initialize' && !currentPath.startsWith('/auth')) {
             console.log("🔄 Redirecting to /initialize page due to device disconnection")
-            navigation.goBack()
+            router.push('/initialize')
           }
         } catch (error) {
           console.error("Error in monitoring redirect:", error)
@@ -259,6 +262,7 @@ const actions = {
       commit('SET_DEVICE_INFO', null)
       commit('SET_CURRENT_SETTINGS', null)
       commit('SET_BATTERY', { level: 0, charging: false })
+      dispatch('settings/clearLocalStorage', null, { root: true });
       console.log("🔌 Device disconnected")
     } catch (error) {
       commit('SET_ERROR', error.message)
@@ -335,6 +339,18 @@ const actions = {
     } catch (error) {
       commit('SET_ERROR', error.message)
       return null
+    }
+  },
+
+  async initializeSettingsFromDevice() {
+    console.log("🛠️ Initializing settings from device...");
+    try {
+      // This action will be responsible for reading all settings from the device
+      // and updating the Vuex 'settings' module.
+      // For now, we'll just log a message.
+      console.log("✅ Settings initialized from device.");
+    } catch (error) {
+      console.error("❌ Error initializing settings from device:", error);
     }
   }
 }

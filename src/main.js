@@ -3,6 +3,7 @@ import VueCompositionAPI from '@vue/composition-api'
 import ElementUI from 'element-ui'
 import { Icon } from '@iconify/vue2'
 import { getAuth, onAuthStateChanged } from 'firebase/auth'
+import * as Sentry from '@sentry/vue'
 
 import App from './App.vue'
 import router from './router'
@@ -17,10 +18,38 @@ Vue.use(VueCompositionAPI)
 Vue.use(ElementUI)
 
 Vue.component('IconifyIcon', Icon)
+
+// Initialize Sentry for error tracking
+if (process.env.NODE_ENV === 'production') {
+  Sentry.init({
+    Vue,
+    dsn: "YOUR_SENTRY_DSN_HERE", //  Replace with your actual Sentry DSN
+    integrations: [
+      new Sentry.BrowserTracing({
+        routingInstrumentation: Sentry.vueRouterInstrumentation(router),
+        tracePropagationTargets: ["localhost", "your-site.com", /^\//],
+      }),
+      new Sentry.Replay(),
+    ],
+    // Performance Monitoring
+    tracesSampleRate: 1.0, 
+    replaysSessionSampleRate: 0.1, 
+    replaysOnErrorSampleRate: 1.0,
+  });
+}
+
 // Global event bus (keeping for backward compatibility with existing components)
 Vue.prototype.$bus = new Vue()
 
 Vue.config.productionTip = false
+
+// Global error handler
+Vue.config.errorHandler = (err, vm, info) => {
+  console.error('Global error:', err, vm, info);
+  if (process.env.NODE_ENV === 'production') {
+    Sentry.captureException(err);
+  }
+};
 
 // Initialize settings from localStorage on app startup
 store.dispatch('settings/loadSettingsFromLocalStorage')
