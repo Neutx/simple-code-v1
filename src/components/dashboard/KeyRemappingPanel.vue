@@ -50,7 +50,7 @@
             <div class="separator"></div>
 
             <!-- Debounce Time Setting -->
-            <div class="key-function-item">
+            <div class="key-function-item" v-if="!isAnzuDevice">
               <span class="key-name">Debounce Time</span>
               <div class="dropdown-container" ref="debounceDropdownContainer" @click="toggleDebounceDropdown" :class="{ disabled: !isOnline }">
                 <span class="dropdown-value">{{ debounceTime }} ms</span>
@@ -270,8 +270,12 @@ export default {
       'debounceTime'
     ]),
     ...mapGetters('macros', ['allMacros', 'isLoading', 'isSyncing', 'error']),
-    ...mapGetters('device', ['isConnected', 'isOnline']),
+    ...mapGetters('device', ['isConnected', 'isOnline', 'deviceModel']),
     
+    isAnzuDevice() {
+      return this.deviceModel && this.deviceModel.toLowerCase().includes('anzu');
+    },
+
     macros() {
       return this.allMacros
     },

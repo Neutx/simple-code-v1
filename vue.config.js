@@ -9,7 +9,7 @@ module.exports = defineConfig({
   },
   publicPath: '/',
   transpileDependencies: true,
-  lintOnSave: false, //关闭eslint校验
+  lintOnSave: false, 
   productionSourceMap: false, // Disable source maps in production for security
   css: {
     extract: true, // Extract CSS into separate files

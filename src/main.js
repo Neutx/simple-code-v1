@@ -23,18 +23,19 @@ Vue.component('IconifyIcon', Icon)
 if (process.env.NODE_ENV === 'production') {
   Sentry.init({
     Vue,
-    dsn: "YOUR_SENTRY_DSN_HERE", //  Replace with your actual Sentry DSN
+    dsn: process.env.VUE_APP_SENTRY_DSN, //  Replace with your actual Sentry DSN
     integrations: [
-      new Sentry.BrowserTracing({
-        routingInstrumentation: Sentry.vueRouterInstrumentation(router),
+      Sentry.browserTracingIntegration({
+        router,
         tracePropagationTargets: ["localhost", "your-site.com", /^\//],
       }),
-      new Sentry.Replay(),
+      Sentry.replayIntegration(),
     ],
     // Performance Monitoring
     tracesSampleRate: 1.0, 
     replaysSessionSampleRate: 0.1, 
     replaysOnErrorSampleRate: 1.0,
+    sendDefaultPii: true, // Send PII data to Sentry
   });
 }
 

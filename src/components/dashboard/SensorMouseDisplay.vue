@@ -69,7 +69,6 @@
           <div class="status-text">
         <span class="text-white/50 text-lg font-semibold font-['DM_Sans']">Battery: </span>
         <span class="text-white text-lg font-semibold font-['DM_Sans']">{{ batteryLevel }}%</span>
-        <span v-if="isCharging" class="charging-text">Charging</span>
       </div>
         </div>
       </div>
