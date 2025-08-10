@@ -37,12 +37,12 @@
       </div>
       <div class="status-text">
         <span class="status-label">Battery: </span>
-        <span class="status-value">{{ batteryLevel }}%</span>
+        <span class="status-value" v-if="!isCharging">{{ batteryLevel }}%</span>
         <span v-if="isCharging" class="charging-text">Charging</span>
       </div>
     </div>
 
-    <div class="status-item">
+    <div class="status-item" v-if="!isAnzuDevice">
       <div class="status-icon">
         <IconifyIcon icon="mynaui:arrow-up-down" />
       </div>
@@ -95,6 +95,11 @@ export default {
     isCharging: {
       type: Boolean,
       default: false
+    }
+  },
+  computed: {
+    isAnzuDevice() {
+      return this.deviceModel && this.deviceModel.toLowerCase().includes('anzu');
     }
   }
 }

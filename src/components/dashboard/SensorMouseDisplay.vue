@@ -136,18 +136,27 @@ export default {
     }
   },
   watch: {
-    // Watchers for prop changes if needed
+    pollingRate(newRate) {
+      if (newRate !== this.realTimePollingRate) {
+        this.realTimePollingRate = newRate;
+      }
+    },
+    currentDPI(newDPI) {
+      if (newDPI !== this.realTimeCurrentDPI) {
+        this.realTimeCurrentDPI = newDPI;
+      }
+    },
+    batteryLevel(newLevel) {
+      if (newLevel !== this.realTimeBatteryLevel) {
+        this.realTimeBatteryLevel = newLevel;
+      }
+    }
   },
   mounted() {
     // Listen for real-time updates from sensor settings panel
     this.$bus.$on("updateMouseUI", (mouseCfg) => {
       try {
         if (!mouseCfg || typeof mouseCfg !== 'object') return
-
-        // Update polling rate
-        if (typeof mouseCfg.reportRate === 'number' && mouseCfg.reportRate > 0) {
-          this.realTimePollingRate = mouseCfg.reportRate
-        }
 
         // Update DPI
         if (

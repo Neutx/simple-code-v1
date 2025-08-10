@@ -18,25 +18,41 @@
 
           <!-- Sensor Mode -->
           <div class="setting-section">
-            <label class="setting-label">Sensor mode</label>
+            <label class="setting-label">{{ isAnzuDevice ? 'Mode' : 'Sensor mode' }}</label>
             <div class="button-group">
-              <button
-                v-for="mode in sensorModes"
-                :key="mode.id"
-                :class="['option-btn', { 
-                  active: activeSensorMode === mode.id,
-                  disabled: !isDeviceConnected || !isSensorModeSelectable(mode.id)
-                }]"
-                @click="handleSensorModeClick(mode.id)"
-                :disabled="!isDeviceConnected || !isSensorModeSelectable(mode.id)"
-              >
-                {{ mode.label }}
-              </button>
+              <template v-if="isAnzuDevice">
+                <button
+                  :class="['option-btn', { active: deviceInfo.isWired }]"
+                  disabled
+                >
+                  Corded
+                </button>
+                <button
+                  :class="['option-btn', { active: !deviceInfo.isWired }]"
+                  disabled
+                >
+                  2.4GHz
+                </button>
+              </template>
+              <template v-else>
+                <button
+                  v-for="mode in sensorModes"
+                  :key="mode.id"
+                  :class="['option-btn', { 
+                    active: activeSensorMode === mode.id,
+                    disabled: !isDeviceConnected || !isSensorModeSelectable(mode.id)
+                  }]"
+                  @click="handleSensorModeClick(mode.id)"
+                  :disabled="!isDeviceConnected || !isSensorModeSelectable(mode.id)"
+                >
+                  {{ mode.label }}
+                </button>
+              </template>
             </div>
           </div>
 
           <!-- Lift-off Distance -->
-          <div class="setting-section">
+          <div class="setting-section" v-if="!isAnzuDevice">
             <label class="setting-label">Lift of Distance</label>
             <div class="button-group wide">
               <button
@@ -53,10 +69,11 @@
 
           <!-- Toggle controls -->
           <div class="setting-row" v-for="toggle in toggles" :key="toggle.id">
-            <span class="setting-label">{{ toggle.label }}</span>
+            <span class="setting-label" v-if="!(isAnzuDevice && toggle.id === 'ripple')">{{ toggle.label }}</span>
 
             <!-- New toggle switch -->
             <div
+              v-if="!(isAnzuDevice && toggle.id === 'ripple')"
               class="toggle-switch"
               :class="{ checked: toggle.model, disabled: !isDeviceConnected }"
               @click="handleToggleClick(toggle.id)"
@@ -101,7 +118,7 @@
           <div class="polling-rate-selector">
             <div class="rate-labels">
               <span
-                v-for="(rate, i) in dynamicPollingRates"
+                v-for="(rate, i) in pollingRates"
                 :key="rate"
                 :class="['rate-label', { active: activePollingRate === rate, disabled: !isDeviceConnected }]"
                 @click="handlePollingRateClick(i)"
@@ -113,8 +130,8 @@
               <input
                 type="range"
                 min="0"
-                :max="dynamicPollingRates.length - 1"
-                v-model="pollingIndex"
+                :max="pollingRates.length - 1"
+                :value="pollingIndex"
                 @input="handlePollingRateDrag"
                 class="polling-slider"
                 :style="{ '--fill-percent': fillPercent + '%' }"
@@ -154,11 +171,11 @@ export default {
       sleepDropdownOpen: false,
       
       // Flag to prevent infinite loops during sync
-      isUpdatingFromDevice: false,
-      isUpdatingFromVuex: false
+      isUpdatingFromDevice: false
     }
   },
   computed: {
+    ...mapGetters('device', ['deviceModel']),
     ...mapGetters('settings', [
       'sensorMode',
       'sensorLOD', 
@@ -230,21 +247,21 @@ export default {
 
       // Polling rates (Hz)
     pollingRates() {
+      if (this.isAnzuDevice) {
+        return [125, 250, 500, 1000];
+      }
       return [125, 500, 1000, 2000, 4000]
     },
 
     // Current polling rate index from Vuex
     pollingIndex() {
-      const index = this.dynamicPollingRates.indexOf(this.sensorPollingRate)
+      const index = this.pollingRates.indexOf(this.sensorPollingRate)
       // Default to the last available option if not found
-      return index !== -1 ? index : this.dynamicPollingRates.length -1
+      return index !== -1 ? index : this.pollingRates.length - 1
     },
 
-    dynamicPollingRates() {
-      // Return appropriate polling rates based on device connection type
-      // Wired: 125Hz, 500Hz, 2000Hz only (as per user requirement)
-      // Wireless: All rates available
-      return this.isWiredDevice ? [125, 500, 1000] : this.pollingRates;
+    isAnzuDevice() {
+      return this.deviceModel && this.deviceModel.toLowerCase().includes('anzu');
     },
 
     activePollingRate() {
@@ -252,8 +269,8 @@ export default {
     },
 
     fillPercent() {
-      const index = this.dynamicPollingRates.indexOf(this.sensorPollingRate)
-      const maxIndex = this.dynamicPollingRates.length - 1
+      const index = this.pollingRates.indexOf(this.sensorPollingRate)
+      const maxIndex = this.pollingRates.length - 1
       
       if (index === -1 || maxIndex <= 0) {
         return 0
@@ -304,6 +321,7 @@ export default {
   },
   
   mounted() {
+    console.log('SensorSettingsPanel mounted, deviceModel:', this.deviceModel);
     // Initialize settings from Vuex store first
     this.initializeFromVuex()
     
@@ -348,7 +366,7 @@ export default {
   watch: {
     // Watch Vuex state changes and sync to device
     sensorMode(newMode, oldMode) {
-      if (!this.isUpdatingFromVuex && this.isDeviceConnected && oldMode !== undefined) {
+      if (!this.isUpdatingFromDevice && this.isDeviceConnected && oldMode !== undefined) {
         this.syncModeToDevice(newMode)
       }
       // Auto-save to localStorage when settings change
@@ -358,7 +376,7 @@ export default {
     },
     
     sensorLOD(newLOD, oldLOD) {
-      if (!this.isUpdatingFromVuex && this.isDeviceConnected && oldLOD !== undefined) {
+      if (!this.isUpdatingFromDevice && this.isDeviceConnected && oldLOD !== undefined) {
         this.syncLODToDevice(newLOD)
       }
       // Auto-save to localStorage when settings change
@@ -368,7 +386,7 @@ export default {
     },
     
     sensorPollingRate(newRate, oldRate) {
-      if (!this.isUpdatingFromVuex && this.isDeviceConnected && oldRate !== undefined) {
+      if (!this.isUpdatingFromDevice && this.isDeviceConnected && oldRate !== undefined) {
         this.syncPollingRateToDevice(newRate);
 
         // Automatically update sensor mode based on polling rate and device type
@@ -390,7 +408,7 @@ export default {
     },
     
     sensorRipple(newVal, oldVal) {
-      if (!this.isUpdatingFromVuex && this.isDeviceConnected && oldVal !== undefined) {
+      if (!this.isUpdatingFromDevice && this.isDeviceConnected && oldVal !== undefined) {
         this.syncRippleToDevice(newVal)
       }
       // Auto-save to localStorage when settings change
@@ -400,7 +418,7 @@ export default {
     },
     
     sensorAngle(newVal, oldVal) {
-      if (!this.isUpdatingFromVuex && this.isDeviceConnected && oldVal !== undefined) {
+      if (!this.isUpdatingFromDevice && this.isDeviceConnected && oldVal !== undefined) {
         this.syncAngleToDevice(newVal)
       }
       // Auto-save to localStorage when settings change
@@ -410,7 +428,7 @@ export default {
     },
     
     sensorMotionSync(newVal, oldVal) {
-      if (!this.isUpdatingFromVuex && this.isDeviceConnected && oldVal !== undefined) {
+      if (!this.isUpdatingFromDevice && this.isDeviceConnected && oldVal !== undefined) {
         this.syncMotionSyncToDevice(newVal)
       }
       // Auto-save to localStorage when settings change
@@ -559,27 +577,30 @@ export default {
     },
     
     // Apply current Vuex settings to the device (when we have persisted settings)
-    async applyVuexSettingsToDevice() {
-      if (!this.isDeviceConnected) return
+    //Below is the troubling code iski maa ka bhosda
+    // async applyVuexSettingsToDevice() {
+    //   if (!this.isDeviceConnected) return
       
-      try {
-        // Apply all current Vuex settings to device
-        await HIDHandle.Set_MS_SensorMode(this.sensorMode)
-        await HIDHandle.Set_MS_LOD(this.sensorLOD)
-        await HIDHandle.Set_MS_ReportRate(this.sensorPollingRate)
-        await HIDHandle.Set_MS_Ripple(this.sensorRipple ? 1 : 0)
-        await HIDHandle.Set_MS_Angle(this.sensorAngle ? 1 : 0)
-        await HIDHandle.Set_MS_MotionSync(this.sensorMotionSync ? 1 : 0)
-        await HIDHandle.Set_MS_LightOffTime(this.sensorSleepTimer)
+    //   try {
+    //     // Apply all current Vuex settings to device
+    //     await HIDHandle.Set_MS_SensorMode(this.sensorMode)
+    //     if (!this.isAnzuDevice) {
+    //       await HIDHandle.Set_MS_LOD(this.sensorLOD)
+    //       await HIDHandle.Set_MS_Ripple(this.sensorRipple ? 1 : 0)
+    //     }
+    //     await HIDHandle.Set_MS_ReportRate(this.sensorPollingRate)
+    //     await HIDHandle.Set_MS_Angle(this.sensorAngle ? 1 : 0)
+    //     await HIDHandle.Set_MS_MotionSync(this.sensorMotionSync ? 1 : 0)
+    //     await HIDHandle.Set_MS_LightOffTime(this.sensorSleepTimer)
         
-        // Update UI
-        this.$bus.$emit("updateMouseUI", this.deviceInfo.mouseCfg)
-        console.log("Successfully applied persisted Vuex settings to the device.");
+    //     // Update UI
+    //     this.$bus.$emit("updateMouseUI", this.deviceInfo.mouseCfg)
+    //     console.log("Successfully applied persisted Vuex settings to the device.");
         
-      } catch (error) {
-        console.error('Error applying Vuex settings to device:', error)
-      }
-    },
+    //   } catch (error) {
+    //     console.error('Error applying Vuex settings to device:', error)
+    //   }
+    // },
 
     // Start monitoring device changes
     startDeviceMonitoring() {
@@ -767,7 +788,7 @@ export default {
     handlePollingRateClick(index) {
       if (!this.isDeviceConnected) return
       
-      const rate = this.dynamicPollingRates[index]
+      const rate = this.pollingRates[index]
       if (!rate) return
       
       this.setSensorPollingRate(rate)
@@ -778,7 +799,7 @@ export default {
 
     handlePollingRateDrag(event) {
       const newIndex = parseInt(event.target.value, 10);
-      const newRate = this.dynamicPollingRates[newIndex];
+      const newRate = this.pollingRates[newIndex];
       this.setSensorPollingRate(newRate);
       
       // Apply the same sensor mode logic as clicking
@@ -786,7 +807,7 @@ export default {
     },
 
     handlePollingRateChange(newIndex) {
-      const newRate = this.dynamicPollingRates[newIndex]
+      const newRate = this.pollingRates[newIndex]
       
       console.log('🔧 Polling rate change:', {
         newRate,
@@ -834,9 +855,11 @@ export default {
         
         // Reset hardware to defaults with device-appropriate settings
         await HIDHandle.Set_MS_SensorMode(defaultSensorMode)    // Corded for wired, Low Power for wireless
-        await HIDHandle.Set_MS_LOD(1.0)                         // 1mm
+        if (!this.isAnzuDevice) {
+          await HIDHandle.Set_MS_LOD(1.0)                         // 1mm
+          await HIDHandle.Set_MS_Ripple(0)                        // Off
+        }
         await HIDHandle.Set_MS_ReportRate(defaultPollingRate)   // Device-appropriate default
-        await HIDHandle.Set_MS_Ripple(0)                        // Off
         await HIDHandle.Set_MS_Angle(0)                         // Off
         await HIDHandle.Set_MS_MotionSync(1)                    // On
         await HIDHandle.Set_MS_LightOffTime(6)                  // 1 min sleep timer
@@ -1016,6 +1039,14 @@ export default {
     border-color: #444;
     color: #666;
     background: transparent !important;
+  }
+
+  &.active:disabled,
+  &.active.disabled {
+    opacity: 1;
+    background: #a278fd33 !important;
+    border-color: #a278fd;
+    color: white;
   }
 }
 

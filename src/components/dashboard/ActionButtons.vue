@@ -22,7 +22,7 @@
             
             <!-- Toggle Options -->
             <div class="toggle-section">
-              <div class="toggle-item">
+              <div class="toggle-item" v-if="!isAnzuDevice">
                 <span class="toggle-label">Long distance mode</span>
                 <div class="toggle-switch" :class="{ active: longDistanceMode }" @click="toggleLongDistanceMode">
                   <div class="toggle-icon">
@@ -80,6 +80,7 @@
 </template>
 
 <script>
+import { mapGetters } from 'vuex';
 export default {
   name: 'ActionButtons',
   data() {
@@ -89,6 +90,12 @@ export default {
       longDistanceMode: false,
       receiverVersion: 'v2.00',
       usbVersion: 'v3.10'
+    }
+  },
+  computed: {
+    ...mapGetters('device', ['deviceModel']),
+    isAnzuDevice() {
+      return this.deviceModel && this.deviceModel.toLowerCase().includes('anzu');
     }
   },
   mounted() {

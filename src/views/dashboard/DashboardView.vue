@@ -61,10 +61,10 @@
           :mouse-image-src="mouseImageSrc"
           :profileCount="4"
           :activeProfile="1"
-          :currentDPI="currentDPI"
-          :pollingRate="pollingRate"
-          :batteryLevel="batteryLevel"
-          :is-charging="isCharging"
+          :currentDPI="deviceInfo.mouseCfg.dpis[deviceInfo.mouseCfg.currentDpi] ? deviceInfo.mouseCfg.dpis[deviceInfo.mouseCfg.currentDpi].value : 1600"
+          :pollingRate="sensorSettings.pollingRate"
+          :batteryLevel="deviceInfo.battery.level"
+          :is-charging="deviceInfo.battery.charging"
         />
       </div>
       
@@ -101,12 +101,12 @@
     <div class="dashboard-footer" v-if="!isDPIMode && activeTab !== 'rgb' && activeTab !== 'sensor' && activeTab !== 'keys'">
       <StatusBar 
         :device-model="deviceModel"
-        :current-d-p-i="currentDPI"
-        :polling-rate="pollingRate"
-        :battery-level="batteryLevel"
-        :lift-off-distance="liftOffDistance"
-        :motion-sync="motionSync"
-        :is-charging="isCharging"
+        :current-d-p-i="deviceInfo.mouseCfg.dpis[deviceInfo.mouseCfg.currentDpi] ? deviceInfo.mouseCfg.dpis[deviceInfo.mouseCfg.currentDpi].value : 1600"
+        :polling-rate="sensorSettings.pollingRate"
+        :battery-level="deviceInfo.battery.level"
+        :lift-off-distance="`${sensorSettings.lod}MM`"
+        :motion-sync="sensorSettings.motionSync"
+        :is-charging="deviceInfo.battery.charging"
       />
     </div>
   </div>
@@ -166,59 +166,22 @@ export default {
   },
   computed: {
     ...mapGetters('auth', ['currentUser']),
-    ...mapGetters('device', ['isConnected', 'isOnline']),
+    ...mapGetters('device', ['isConnected', 'isOnline', 'deviceModel']),
     ...mapGetters('settings', ['dpiSettings', 'rgbSettings', 'sensorSettings']),
     
     isDPIMode() {
       return this.activeTab === 'dpi'
     },
     
-    deviceModel() {
-      // Use reactive deviceInfo for device info
-      if (this.deviceInfo.info && this.deviceInfo.info.cid && this.deviceInfo.info.mid) {
-        return this.getDeviceNameFromCidMid(this.deviceInfo.info.cid, this.deviceInfo.info.mid)
-      }
-      return 'Ikarus' // Default mouse model
-    },
-    
-    currentDPI() {
-      // Use reactive deviceInfo for current DPI
-      const dpiIndex = this.deviceInfo?.mouseCfg?.currentDpi;
-      const dpiValue = this.deviceInfo?.mouseCfg?.dpis?.[dpiIndex]?.value;
-      return dpiValue || 1600;
-    },
-    
-    batteryLevel() {
-      // Use reactive deviceInfo for battery level
-      const level = this.deviceInfo?.battery?.level;
-      return level || 0;
-    },
-    
-    pollingRate() {
-      // Use HIDHandle directly for polling rate with reactive deviceInfo
-      const rate = this.deviceInfo?.mouseCfg?.reportRate;
-      return rate || 1000;
-    },
-    
-    liftOffDistance() {
-      // Use reactive deviceInfo for LOD
-      const lod = this.deviceInfo?.mouseCfg?.sensor?.lod;
-      return lod ? `${lod}MM` : '1MM';
-    },
-    
-    motionSync() {
-      // Use reactive deviceInfo for motion sync
-      const sync = this.deviceInfo?.mouseCfg?.sensor?.motionSync;
-      return sync || false;
-    },
-    
-    isCharging() {
-      // Use reactive deviceInfo for charging status
-      return this.deviceInfo?.battery?.charging || false;
-    },
-    
     mouseImageSrc() {
-      return '/mice/ikarus.svg'
+      if (!this.deviceModel) {
+        return '/mice/ikarus.svg'; // Default image
+      }
+      const modelName = this.deviceModel.split(' ')[1]?.toLowerCase();
+      if (modelName) {
+        return `/mice/${modelName}.svg`;
+      }
+      return '/mice/ikarus.svg'; // Fallback for unknown models
     }
   },
   

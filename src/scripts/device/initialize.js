@@ -7,6 +7,53 @@ export const createInitializeComposable = (store, router, message) => {
   let showError = false;
   let hasNavigated = false;
 
+  // Log connected device name (Kreo Ikarus/Anzu/Chimera) without using cid/mid
+  const logConnectedDeviceName = async () => {
+    try {
+      // Prefer a HIDHandle helper if it exists and returns a name
+      if (
+        HIDHandle &&
+        typeof HIDHandle.requestDeviceInfo === 'function'
+      ) {
+        const info = await HIDHandle.requestDeviceInfo();
+        if (info && (info.name || info.productName)) {
+          const rawName = info.name || info.productName;
+          const lower = String(rawName).toLowerCase();
+          let model = 'Unknown';
+          if (lower.includes('ikarus')) model = 'Kreo Ikarus';
+          else if (lower.includes('anzu')) model = 'Kreo Anzu';
+          else if (lower.includes('chimera')) model = 'Kreo Chimera';
+          console.log('🖱️ Connected mouse:', { name: rawName, model });
+          store.commit('device/SET_DEVICE_MODEL', model);
+          return;
+        }
+      }
+
+      // Fallback: derive product name from granted, opened HID device
+      if (navigator && navigator.hid && typeof navigator.hid.getDevices === 'function') {
+        const devices = await navigator.hid.getDevices();
+        // Pick the device that is currently opened
+        const opened = devices.find(d => d.opened);
+        if (opened) {
+          const rawName = opened.productName || opened.productId?.toString(16) || 'Unknown';
+          const lower = String(rawName).toLowerCase();
+          let model = 'Unknown';
+          if (lower.includes('ikarus')) model = 'Kreo Ikarus';
+          else if (lower.includes('anzu')) model = 'Kreo Anzu';
+          else if (lower.includes('chimera')) model = 'Kreo Chimera';
+          console.log('🖱️ Connected mouse:', { name: rawName, model });
+          store.commit('device/SET_DEVICE_MODEL', model);
+          return;
+        }
+      }
+
+      console.log('🖱️ Connected mouse: Unknown (no product name available)');
+      store.commit('device/SET_DEVICE_MODEL', 'Unknown');
+    } catch (err) {
+      console.error('Failed to log connected device name:', err);
+    }
+  };
+
   const navigateToDashboard = () => {
     if (!hasNavigated) {
       hasNavigated = true;
@@ -102,6 +149,9 @@ export const createInitializeComposable = (store, router, message) => {
 
           console.log("🎉 Device connection established!");
           console.log("📊 Final device state:", HIDHandle.deviceInfo);
+
+          // Log connected device model/name without using cid/mid
+          await logConnectedDeviceName();
 
           // Emit device connection event for UI updates
           if (typeof window !== "undefined" && window.Vue) {

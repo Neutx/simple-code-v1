@@ -74,6 +74,7 @@ import MacroSetting from './MacroSetting.vue';
 import OtherSetting from './OtherSetting.vue'
 
 export default {
+  name: 'MouseView',
   components: {
     MouseKey,
     DpiEffect,
@@ -122,7 +123,7 @@ export default {
     },
     // Watch for changes in the wired connection state
     "info.isWired": {
-      handler(newVal) {
+      handler() {
         // This watcher ensures that the component reacts to changes in the isWired property.
         // The template will automatically re-render when this value changes.
       },
